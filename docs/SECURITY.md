@@ -23,7 +23,7 @@ implement our own primitives.
 
 | Use | Primitive |
 |---|---|
-| Passphrase → key-encryption key | Argon2id (`crypto_pwhash`); ops 3, mem 256 MiB on desktop, 64 MiB on mobile/web; the parameters are stored in `lm.json` |
+| Passphrase → key-encryption key | Argon2id (`crypto_pwhash`); ops 3, mem 256 MiB on desktop, 64 MiB on mobile/web; the parameters are stored in `lm.json`; runs in a worker (ADR-012) |
 | Record and blob encryption | XChaCha20-Poly1305 IETF with random 24-byte nonces |
 | Key wrapping | XChaCha20-Poly1305 |
 | File names | BLAKE2b-256 keyed with `pathKey` |

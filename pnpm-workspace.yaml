@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
   - tooling/*
+  - spikes/*
 
 # Dependencies allowed to run install scripts (pnpm blocks all others).
 onlyBuiltDependencies:

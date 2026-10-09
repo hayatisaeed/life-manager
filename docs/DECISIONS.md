@@ -120,3 +120,41 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
   - No stale `dist/` folders and no build ordering between packages.
   - A package must never rely on emit-only features (for example `const enum`
     across packages); `isolatedModules` and `verbatimModuleSyntax` guard this.
+
+### ADR-011 — Web SQLite uses the `opfs-sahpool` VFS; one tab owns the database
+2026-10-09 · accepted (P0.2 spike: [spikes/web-runtime/RESULTS.md](../spikes/web-runtime/RESULTS.md))
+
+- **Context:** sqlite-wasm has two OPFS back-ends. `opfs` needs
+  `SharedArrayBuffer`, so the page must be served with COOP/COEP headers,
+  which GitHub Pages can't send. `opfs-sahpool` needs no special headers.
+  The spike measured both with 50k rows and FTS5.
+- **Decision:**
+  - The web `SqlDriver` runs sqlite-wasm in a dedicated worker with the
+    `opfs-sahpool` VFS. The app does not depend on cross-origin isolation.
+  - `opfs-sahpool` allows only one connection per origin. The first tab takes
+    a Web Lock and owns the database; how other tabs behave (proxy queries to
+    the owner, or show an "open in another tab" screen) is decided in P0.5.
+  - Repository writes are grouped into one transaction per user action (the
+    record, its change-log row and its FTS row), and bulk paths (import, sync
+    apply) batch many records per transaction, because each commit to OPFS is
+    expensive.
+  - FTS5 with the `unicode61 remove_diacritics 2` tokenizer is the search
+    index on every platform; it tokenizes Persian.
+- **Consequences:**
+  - The PWA can be hosted on any static host, GitHub Pages included.
+  - Multi-tab use on the web needs explicit handling in the web driver.
+  - The page cache should be sized to hold the working set; P0.5 picks the
+    number.
+
+### ADR-012 — Argon2id parameters: desktop baseline measured, mobile still open
+2026-10-09 · accepted (P0.2 spike: [spikes/web-runtime/RESULTS.md](../spikes/web-runtime/RESULTS.md))
+
+- **Context:** SECURITY.md sets Argon2id to ops 3 with 256 MiB on desktop and
+  64 MiB on mobile and web. The spike measured libsodium 1.0.22 (wasm) on a
+  4-vCPU machine: about 0.2 s at 64 MiB and 1 s at 256 MiB, linear in memory.
+  256 MiB allocates fine in a browser worker.
+- **Decision:** Keep the parameters in SECURITY.md unchanged. Run the key
+  derivation in a worker so the UI never blocks.
+- **Consequences:** The mobile memlimit is confirmed only after a run on a
+  mid-range Android phone (part of P0.2, still open). Because the parameters
+  are stored in `lm.json`, raising them later only needs a rewrap.

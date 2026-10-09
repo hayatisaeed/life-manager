@@ -1,0 +1,19 @@
+{
+  "name": "@lm/spike-web-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "P0.2 throwaway spike: sqlite-wasm (OPFS) and libsodium Argon2id in Chromium. Not part of the app.",
+  "type": "module",
+  "scripts": {
+    "spike": "node run.mjs",
+    "spike:argon2-node": "node argon2-node.mjs"
+  },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.53.4-build2",
+    "libsodium-wrappers-sumo": "0.8.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "vite": "^8.3.4"
+  }
+}

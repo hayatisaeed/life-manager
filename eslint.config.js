@@ -22,6 +22,8 @@ export default tseslint.config(
       'apps/desktop/src-tauri/**',
       'apps/mobile/android/**',
       'apps/mobile/ios/**',
+      // Throwaway P0.2 spike code; not held to app lint rules.
+      'spikes/**',
     ],
   },
   js.configs.recommended,

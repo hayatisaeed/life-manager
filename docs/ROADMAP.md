@@ -41,13 +41,13 @@ clean clone and in CI.
 - [ ] **GitLab API from the browser:** CORS on gitlab.com; tree pagination
   returning SHAs; the commits API with `last_commit_id`, confirming it rejects
   stale updates; archive download CORS
-- [ ] **sqlite-wasm OPFS** in a worker: performance with 50k rows; FTS5
-  available
+- [x] **sqlite-wasm OPFS** in a worker: performance with 50k rows; FTS5
+  available (ADR-011)
 - [ ] **Tauri 2:** sql plugin, keyring crate and http plugin on macOS and
   Windows
 - [ ] **Capacitor:** sqlite, secure storage and native HTTP on Android
 - [ ] **libsodium-wrappers-sumo:** Argon2id timing on a mid-range Android phone
-  (pick memlimit)
+  (pick memlimit). Desktop baseline done (ADR-012); the phone run is open.
 
 **AC:** Each spike has a written result. Any design change is recorded as an
 ADR and reflected in SYNC.md.
