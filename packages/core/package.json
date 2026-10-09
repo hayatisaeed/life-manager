@@ -9,6 +9,14 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "fractional-indexing": "4.0.0",
+    "ulid": "3.0.2"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "5.0.3",
+    "fast-check": "4.10.2"
   }
 }

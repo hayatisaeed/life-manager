@@ -75,7 +75,18 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
   path therefore fails to decrypt, and the engine skips it and logs an error.
 - **HLC format:** `ISO-millis-counter(4 hex)-deviceId`. These strings sort
   lexicographically in time order. Each device keeps one HLC; it is advanced on
-  every local write and on receiving a remote HLC.
+  every local write and on receiving a remote HLC. Implemented in
+  `packages/core/src/hlc.ts` (ADR-012):
+  - The ISO part is always `YYYY-MM-DDTHH:mm:ss.sssZ` (24 characters, up to
+    year 9999). The counter is 4 lowercase hex digits. The `deviceId` is 1–32
+    ASCII letters or digits, for example a ULID. Every part before the device
+    id is fixed width, so string order equals `(time, counter, deviceId)`
+    order. Always compare with plain code-unit comparison, never
+    `localeCompare`.
+  - If the counter would pass `ffff`, the clock moves to the next millisecond
+    and the counter resets to 0.
+  - A remote HLC from the future is adopted, never rejected, because
+    rejecting it would mean refusing a record.
 
 ## 4. Local bookkeeping
 

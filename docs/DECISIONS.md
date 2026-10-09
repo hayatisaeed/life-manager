@@ -140,3 +140,24 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
 - **Consequences:** No multi-tab editing in the web build for v1. The same
   lock can also serve as the sync lock (SYNC.md §5).
 
+### ADR-012 — HLC encoding details and the clock-skew policy
+2026-10-09 · accepted
+
+- **Context:** SYNC.md §3 fixed the HLC string format but not its edge
+  cases. They matter because merge compares HLC strings directly.
+- **Decision:**
+  - `deviceId` is 1–32 ASCII letters or digits. The counter is lowercase hex.
+    The time is the 24-character ISO form (no years past 9999).
+  - When the 16-bit counter overflows, the clock borrows the next
+    millisecond.
+  - Remote HLCs are never rejected for clock skew. A device whose clock runs
+    far ahead pulls the others' HLCs forward with it.
+  - `core` takes time and randomness as injected `Clock` and `RandomSource`
+    functions. ULIDs come from `ulid`'s monotonic factory.
+- **Consequences:**
+  - HLC strings can be compared with `<` everywhere, including in SQLite
+    (BINARY collation).
+  - A badly wrong device clock can make that device's edits win scalar
+    conflicts until other clocks catch up. That costs a little fairness in
+    conflict resolution but never loses data. Showing a warning for large skew
+    is a UI follow-up.
