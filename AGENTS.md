@@ -31,8 +31,7 @@ writing code.
 
 ## 2. End of every session
 
-1. Make sure lint, typecheck and tests pass:
-   `pnpm lint && pnpm typecheck && pnpm test`.
+1. Make sure `pnpm check` passes (and `pnpm test:e2e` if you touched the UI).
 2. Check off completed items in ROADMAP.md.
 3. Update docs/STATUS.md:
    - Rewrite "Current state" (phase, next milestone, blockers, risks).
@@ -44,7 +43,26 @@ writing code.
 5. Commit with Conventional Commits (`feat(sync): …`, `fix(core): …`,
    `docs: …`), then push to your assigned branch.
 
-## 3. Rules that are never broken
+## 3. Commands
+
+| Command | What it does |
+|---|---|
+| `pnpm install` | Install everything. The cloud SessionStart hook runs this for you. |
+| `pnpm check` | Lint + format check + typecheck + unit tests. Run it before every commit. |
+| `pnpm lint` | ESLint (including the RTL `no-physical-direction` rule) + `lm-check-deps` (dependency direction) |
+| `pnpm format` | Prettier write |
+| `pnpm typecheck` | `tsc --noEmit` in every package (Turborepo) |
+| `pnpm test` | Vitest in every package (Turborepo) |
+| `pnpm test:e2e` | Playwright smoke tests against the built web app. In cloud sessions `PW_CHROMIUM_PATH` points at the preinstalled Chromium; locally run `pnpm --filter @lm/web exec playwright install chromium` once. |
+| `pnpm dev:web` | Web app dev server at http://localhost:5173 |
+| `pnpm stories` | Ladle component stories for `@lm/ui` |
+| `pnpm --filter @lm/<pkg> <script>` | Run a script in one package |
+
+**Adding a package:** create it under `packages/`, export `./src/index.ts`,
+and add it to `ALLOWED` in `tooling/repo-checks/src/check-deps.js` and to
+ARCHITECTURE.md §3.
+
+## 4. Rules that are never broken
 
 1. **No server.** Don't add a backend, a relay, a proxy or a hosted service.
    Everything runs on the device. The only remote endpoints are the user's
@@ -75,7 +93,7 @@ writing code.
    Inject time and randomness so tests are deterministic.
 10. **Don't skip, disable or weaken tests** to get CI green. Fix the cause.
 
-## 4. Code conventions
+## 5. Code conventions
 
 - **TypeScript:** strict mode, ESM, no `any` (use `unknown` and narrow).
   Validate external data (API responses, imports, decrypted records) with zod
@@ -110,7 +128,7 @@ writing code.
 - **Comments:** explain *why*, not *what*. Every non-obvious algorithm (merge,
   recurrence, streaks, statistics) links to its spec section.
 
-## 5. Testing expectations
+## 6. Testing expectations
 
 | Code | Required tests |
 |---|---|
@@ -120,7 +138,7 @@ writing code.
 | `sync` | Fake-forge tests for every branch of the cycle; the convergence simulator; opt-in real-forge contract tests (`LM_TEST_GITHUB_TOKEN`, `LM_TEST_GITHUB_REPO`, `LM_TEST_GITLAB_*`) |
 | `ui` | Component tests for logic-heavy components; a Playwright smoke test per feature in light/dark and LTR/RTL |
 
-## 6. Working with external services
+## 7. Working with external services
 
 - **GitHub/GitLab:** use test repos and tokens supplied through env vars only.
   Never use the owner's real data repo in tests.
@@ -136,7 +154,7 @@ writing code.
     so in your summary.
   - Don't claim something works on a platform you didn't run.
 
-## 7. When to stop and ask the owner
+## 8. When to stop and ask the owner
 
 Stop and ask, recording the question under "Blockers" in STATUS.md, if:
 
@@ -149,9 +167,20 @@ Stop and ask, recording the question under "Blockers" in STATUS.md, if:
 
 For everything else, follow the specs, make a sensible choice, and record it.
 
-## 8. Scope discipline
+## 9. Scope discipline
 
 - One milestone (or a clearly scoped part of one) per PR or branch.
 - Don't reformat or refactor unrelated code in the same change.
 - Don't build ahead: no speculative abstractions for features in later phases,
   beyond the interfaces the specs already define.
+
+<!-- BEGIN:turborepo-agent-rules -->
+
+# This is NOT the Turborepo you know
+
+Turborepo configuration, task behavior, and CLI commands can vary between installed versions and may differ from your training data. Resolve the `turbo` package from this file's directory or relevant workspace; in monorepos, it may not be visible from the repository root. For example, run `node -p "require.resolve('turbo/package.json')"` from a workspace that depends on `turbo`.
+
+Read `docs/README.md` inside that installed package first, then read the relevant pages from its `docs/` directory before changing Turborepo configuration or commands. Heed deprecation notices. These bundled docs match the installed package version and are available without network access.
+
+This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the managed block while updates are enabled means a later qualifying invocation will add it again. Set `"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block. Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
+<!-- END:turborepo-agent-rules -->

@@ -23,11 +23,13 @@ Work is split into **phases → milestones (P<phase>.<n>) → tasks**.
 ## Phase 0 — Foundations
 
 ### P0.1 Monorepo & tooling
-- [ ] pnpm workspace, Turborepo, and the package skeletons from ARCHITECTURE.md §3
-- [ ] TS strict base config, ESLint and Prettier configs, the `no-physical-direction` lint rule
-- [ ] Vitest workspace, a Playwright scaffold, and Ladle
-- [ ] `.github/workflows/ci.yml` (lint, typecheck, test, build)
-- [ ] `.claude/` SessionStart hook that runs `pnpm i` so cloud agents can run tests
+- [x] pnpm workspace, Turborepo, and the package skeletons from ARCHITECTURE.md §3
+  (desktop and mobile are placeholders until P0.7)
+- [x] TS strict base config, ESLint and Prettier configs, the `no-physical-direction` lint rule
+  (plus the `lm-check-deps` dependency-direction check)
+- [x] Vitest workspace, a Playwright scaffold, and Ladle
+- [x] `.github/workflows/ci.yml` (lint, typecheck, test, build, Playwright smoke test)
+- [x] `.claude/` SessionStart hook that runs `pnpm i` so cloud agents can run tests
 
 **AC:** `pnpm lint && pnpm typecheck && pnpm test && pnpm build` passes on a
 clean clone and in CI.

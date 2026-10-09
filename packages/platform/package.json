@@ -1,0 +1,14 @@
+{
+  "name": "@lm/platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Platform adapter interfaces and web/Tauri/Capacitor implementations.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  }
+}

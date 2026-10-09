@@ -1,0 +1,40 @@
+{
+  "name": "life-manager",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev:web": "pnpm --filter @lm/web dev",
+    "lint": "eslint . --max-warnings=0 && lm-check-deps",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "pnpm --filter @lm/web test:e2e",
+    "stories": "pnpm --filter @lm/ui stories",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@lm/eslint-plugin": "workspace:*",
+    "@lm/repo-checks": "workspace:*",
+    "@types/node": "^26.6.4",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "turbo": "^2.11.7",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
+  }
+}

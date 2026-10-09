@@ -1,0 +1,10 @@
+{
+  "name": "@lm/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Capacitor shell for Android (iOS later). Scaffolded in P0.7 (see docs/ROADMAP.md).",
+  "type": "module",
+  "dependencies": {
+    "@lm/web": "workspace:*"
+  }
+}
