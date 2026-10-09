@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Argon2id spike</title>
+<script type="importmap">
+  {
+    "imports": {
+      "libsodium-sumo": "/node_modules/.pnpm/libsodium-sumo@0.8.4/node_modules/libsodium-sumo/dist/modules-sumo-esm/libsodium-sumo.mjs"
+    }
+  }
+</script>
+<script type="module">
+  import sodium from '/node_modules/libsodium-wrappers-sumo/dist/modules-sumo-esm/libsodium-wrappers.mjs';
+  import { bench, SETTINGS } from './bench.mjs';
+  window.__result = await bench(sodium, SETTINGS);
+</script>

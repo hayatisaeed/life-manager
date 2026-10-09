@@ -95,7 +95,9 @@ Dependencies only point downward:
 ## 4. Local storage
 
 - **SQLite everywhere**, behind one `SqlDriver` interface:
-  - Web: `@sqlite.org/sqlite-wasm`, with OPFS when available.
+  - Web: `@sqlite.org/sqlite-wasm` in a dedicated worker, on the
+    `opfs-sahpool` VFS (no cross-origin isolation needed). One tab owns the
+    database at a time, chosen with a Web Locks lock (ADR-011).
   - Desktop: `tauri-plugin-sql`.
   - Mobile: `@capacitor-community/sqlite`.
 - Two layers of tables:
@@ -291,7 +293,7 @@ interface AIProvider {
 
 | Capability | Web (PWA) | macOS / Windows (Tauri) | Android (Capacitor) |
 |---|---|---|---|
-| SQLite | sqlite-wasm + OPFS | tauri-plugin-sql | capacitor-sqlite |
+| SQLite | sqlite-wasm + OPFS (sahpool) | tauri-plugin-sql | capacitor-sqlite |
 | Sync (GitHub/GitLab API) | ✅ | ✅ | ✅ |
 | Secrets | encrypted IndexedDB | OS keychain | Android Keystore |
 | Notifications | while tab open | ✅ tray + autostart | ✅ |

@@ -5,20 +5,50 @@ short and current. Add new log entries at the top.
 
 ## Current state
 
-- **Phase:** 0 (foundations). **P0.1 Monorepo & tooling is done.**
-- **Next milestone:** **P0.2 Spikes.** Start with the GitHub/GitLab API spikes,
-  the highest-risk item, before building `packages/sync`. Spike code goes under
-  `spikes/`; add `spikes/**` to the ESLint ignores if it gets in the way.
-- **Blockers / needs owner input:** none.
+- **Phase:** 0 (foundations). P0.1 is done; **P0.2 Spikes is in progress.**
+  - Done: sqlite-wasm OPFS (ADR-011). Partly done: Argon2id (desktop-class
+    CPU only).
+  - Scripts ready but not run: GitHub and GitLab API spikes
+    (`spikes/forges/`). They need a throwaway repo and token.
+  - Not started: Tauri and Capacitor spikes (need macOS/Windows/Android).
+- **Next milestone:** finish P0.2 by running `spikes/forges/*.mjs` against
+  scratch repos (owner or a local session with `LM_TEST_*` tokens). P0.3 Core
+  primitives does not depend on the spikes and can start in parallel.
+- **Blockers / needs owner input:**
+  - **Argon2id parameters (security, data format).** SECURITY.md §2 says
+    256 MiB on desktop and 64 MiB on mobile/web, but `lm.json` holds one `kdf`
+    block, so the parameters are per repo and set by the device that creates
+    it. Proposal: one per-repo setting, default ops 3 / 256 MiB (0.8 s in
+    Chromium on a 2.1 GHz Xeon), dropping to 128 MiB if the Android
+    measurement exceeds ~3 s. Alternative: one wrapped key per KDF setting in
+    `lm.json`. Needs an owner decision before P0.4.
+  - Running the forge spikes needs a throwaway GitHub repo and GitLab project
+    with tokens; this cloud session could not reach them.
 - **Known risks:**
   - GitLab commit concurrency (`last_commit_id`) and archive-download CORS
-    have not been verified yet.
+    are still unverified.
   - API rate limits during the first sync of large repos.
-- **Unverified:** the CI workflow has not run on GitHub yet; it will run on the
-  first PR. Locally verified: `pnpm check`, `pnpm build`, `pnpm test:e2e`, and
-  the Ladle build.
+  - A 50k-record first import into sqlite-wasm takes about 5 s; it needs
+    batching and a progress bar.
+- **Unverified:** the forge spikes, Argon2id on Android, Tauri and Capacitor
+  plugins. CI ran on the P0.1 PRs.
 
 ## Session log
+
+### 2026-10-09 — P0.2 Spikes (part 1)
+- Added `spikes/` (outside the workspace, ESLint-ignored) with results in
+  `spikes/README.md`.
+- sqlite-wasm 3.53 in a worker, 50k rows + FTS5, headless Chromium: both OPFS
+  VFSes work and persist; FTS5 is available; no WAL. Chose `opfs-sahpool` with
+  a single owner tab (ADR-011) and updated ARCHITECTURE and TECH-STACK.
+- Argon2id timings in Node and Chromium (64 MiB ≈ 0.2 s, 256 MiB ≈ 0.8–1 s on
+  a 2.1 GHz Xeon). Found that SECURITY.md's per-platform parameters conflict
+  with the single `kdf` block in `lm.json`; raised as a blocker.
+- Wrote the GitHub and GitLab spike scripts (CORS, GraphQL batch read, CAS
+  races, keyset pagination, `last_commit_id`, archive). Not run: probing the
+  forges from this session was not permitted.
+- Surprise: the sqlite-wasm README's `'opfs' in sqlite3` check is stale; use
+  `sqlite3.oo1.OpfsDb`.
 
 ### 2026-10-09 — P0.1 Monorepo & tooling
 - Set up the pnpm + Turborepo workspace, with skeletons for every package in

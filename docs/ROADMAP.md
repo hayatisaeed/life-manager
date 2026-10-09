@@ -41,7 +41,7 @@ clean clone and in CI.
 - [ ] **GitLab API from the browser:** CORS on gitlab.com; tree pagination
   returning SHAs; the commits API with `last_commit_id`, confirming it rejects
   stale updates; archive download CORS
-- [ ] **sqlite-wasm OPFS** in a worker: performance with 50k rows; FTS5
+- [x] **sqlite-wasm OPFS** in a worker: performance with 50k rows; FTS5
   available
 - [ ] **Tauri 2:** sql plugin, keyring crate and http plugin on macOS and
   Windows

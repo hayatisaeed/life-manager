@@ -120,3 +120,23 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
   - No stale `dist/` folders and no build ordering between packages.
   - A package must never rely on emit-only features (for example `const enum`
     across packages); `isolatedModules` and `verbatimModuleSyntax` guard this.
+
+### ADR-011 — Web SQLite uses the `opfs-sahpool` VFS with one owner tab
+2026-10-09 · accepted
+
+- **Context:** The P0.2 spike (spikes/README.md) ran 50k rows plus FTS5 on
+  both OPFS VFSes of `@sqlite.org/sqlite-wasm` 3.53 in a worker. Both work and
+  persist. `opfs-sahpool` was as fast or faster. The `opfs` VFS needs
+  `SharedArrayBuffer`, so COOP/COEP headers, which block cross-origin images
+  and embeds and are awkward on static hosting. Neither VFS supports WAL.
+- **Decision:**
+  - The web `SqlDriver` runs sqlite-wasm in a dedicated worker on
+    `opfs-sahpool`. The web build does not set COOP/COEP.
+  - `opfs-sahpool` allows one connection per origin, so one tab owns the
+    database, elected with a Web Locks lock. Other tabs show a "Life Manager
+    is open in another tab" screen with a "use here" action. Proxying queries
+    between tabs can come later if needed.
+  - Writes are batched in transactions (no WAL).
+- **Consequences:** No multi-tab editing in the web build for v1. The same
+  lock can also serve as the sync lock (SYNC.md §5).
+
