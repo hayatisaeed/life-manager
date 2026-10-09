@@ -76,6 +76,11 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
 - **HLC format:** `ISO-millis-counter(4 hex)-deviceId`. These strings sort
   lexicographically in time order. Each device keeps one HLC; it is advanced on
   every local write and on receiving a remote HLC.
+  - The ISO part is always 24 characters (years 0000–9999) and the counter is
+    lowercase hex. `deviceId` is 1–64 characters of `[0-9A-Za-z_-]`.
+  - If the counter would pass `ffff` within one millisecond, the clock moves to
+    the next millisecond instead of failing the write (ADR-012).
+  - Malformed remote HLCs are rejected (`HlcError`), never coerced.
 
 ## 4. Local bookkeeping
 

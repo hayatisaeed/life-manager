@@ -140,3 +140,25 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
 - **Consequences:** No multi-tab editing in the web build for v1. The same
   lock can also serve as the sync lock (SYNC.md §5).
 
+### ADR-012 — HLC, ULID and order-key details
+2026-10-09 · accepted
+
+- **Context:** P0.3 implements the primitives that SYNC.md §3 and DATA-MODEL.md
+  §1 describe only by format.
+- **Decision:**
+  - **HLC:** Kulkarni-style hybrid logical clock with `now()` and
+    `receive()`. `deviceId` is restricted to `[0-9A-Za-z_-]{1,64}` so the
+    wire string is unambiguous. On counter overflow the clock borrows the next
+    millisecond rather than throwing. Time beyond year 9999, a broken physical
+    clock, or a malformed remote HLC throws `HlcError`. There is no maximum
+    drift check yet: rejecting a far-future remote HLC would block that record
+    from syncing, so how to handle a badly skewed device is left to the sync
+    engine (P0.6).
+  - **ULID:** the `ulid` package's monotonic factory, fed by the injected
+    `Clock` and `Rng`. `isUlid` accepts only the canonical uppercase form.
+  - **Order keys:** the `fractional-indexing` package (default base-62
+    alphabet). No random jitter: concurrent inserts at the same spot may get
+    equal keys, and the `(order, id)` sort keeps them deterministic. Inserting
+    between two equal keys requires re-spacing with `ordersBetween`.
+- **Consequences:** These strings are part of the encrypted record format, so
+  changing any of them later needs a schema upgrader.

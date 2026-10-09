@@ -5,7 +5,10 @@ short and current. Add new log entries at the top.
 
 ## Current state
 
-- **Phase:** 0 (foundations). P0.1 is done; **P0.2 Spikes is in progress.**
+- **Phase:** 0 (foundations). P0.1 is done; **P0.2 Spikes and P0.3 Core
+  primitives are in progress.**
+  - P0.3: ULID, HLC and fractional indexing are done (ADR-012). Next: the
+    envelope and zod entity schemas, then merge, then recurrence.
   - Done: sqlite-wasm OPFS (ADR-011). Partly done: Argon2id (desktop-class
     CPU only).
   - Scripts ready but not run: GitHub and GitLab API spikes
@@ -13,7 +16,7 @@ short and current. Add new log entries at the top.
   - Not started: Tauri and Capacitor spikes (need macOS/Windows/Android).
 - **Next milestone:** finish P0.2 by running `spikes/forges/*.mjs` against
   scratch repos (owner or a local session with `LM_TEST_*` tokens). P0.3 Core
-  primitives does not depend on the spikes and can start in parallel.
+  primitives continues in parallel (next task: envelope + entity schemas).
 - **Blockers / needs owner input:**
   - **Argon2id parameters (security, data format).** SECURITY.md §2 says
     256 MiB on desktop and 64 MiB on mobile/web, but `lm.json` holds one `kdf`
@@ -28,12 +31,27 @@ short and current. Add new log entries at the top.
   - GitLab commit concurrency (`last_commit_id`) and archive-download CORS
     are still unverified.
   - API rate limits during the first sync of large repos.
+  - The HLC has no maximum-drift guard; one device with a far-future clock
+    drags every HLC forward. P0.6 should decide how to handle that (ADR-012).
   - A 50k-record first import into sqlite-wasm takes about 5 s; it needs
     batching and a progress bar.
 - **Unverified:** the forge spikes, Argon2id on Android, Tauri and Capacitor
   plugins. CI ran on the P0.1 PRs.
 
 ## Session log
+
+### 2026-10-09 — P0.3 Core primitives (part 1): ULID, HLC, order keys
+- `@lm/core` now exports `Clock`/`Rng` (injected), `createUlidGenerator` /
+  `isUlid`, `HybridLogicalClock` with `formatHlc`/`parseHlc`/`compareHlc`,
+  and `orderBetween`/`ordersBetween`/`compareByOrder`.
+- Property tests (fast-check) cover HLC monotonicity under arbitrary clock
+  jumps and remote receives, wire-format order, ULID monotonicity, and
+  arbitrary insert sequences for order keys. `core` tests now run with a
+  100% coverage gate (`@vitest/coverage-v8`).
+- Added the `ulid` and `fractional-indexing` dependencies. Recorded the format
+  details as ADR-012 and updated SYNC.md §3, DATA-MODEL.md §1 and TECH-STACK.
+- Surprise: `ulid`'s `isValid` accepts lowercase and overflowing ids, so
+  `isUlid` uses a stricter canonical check.
 
 ### 2026-10-09 — P0.2 Spikes (part 1)
 - Added `spikes/` (outside the workspace, ESLint-ignored) with results in
