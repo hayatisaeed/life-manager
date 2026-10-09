@@ -6,9 +6,10 @@ this list needs an entry in [DECISIONS.md](DECISIONS.md).
 
 | Concern | Choice | Notes |
 |---|---|---|
-| Language | TypeScript (strict, `noUncheckedIndexedAccess`) | ESM only |
-| Package manager / monorepo | pnpm workspaces + Turborepo | Node LTS |
-| Lint / format | ESLint (flat config, typescript-eslint, react, jsx-a11y, custom no-physical-direction rule) + Prettier | |
+| Language | TypeScript 6.0 (strict, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) | ESM only. Pinned below 7 until typescript-eslint supports it (ADR-009) |
+| Package manager / monorepo | pnpm 10 workspaces + Turborepo 2 | Node 22 (`.nvmrc`) |
+| Lint / format | ESLint 9 (flat config, typescript-eslint strict, react, react-hooks, jsx-a11y, `@lm/eslint-plugin`) + Prettier | ESLint pinned to 9 until the React plugins support 10 (ADR-009) |
+| Internal packages | Export TypeScript source directly (`"exports": "./src/index.ts"`); no per-package build | Vite and Vitest compile them (ADR-010) |
 | Unit tests | Vitest + fast-check | |
 | E2E | Playwright (Chromium) against `apps/web` | |
 | Component stories | Ladle | lighter than Storybook |

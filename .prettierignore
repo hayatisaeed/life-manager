@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+dist/
+build/
+coverage/
+.turbo/
+playwright-report/
+test-results/
+build-ladle/
+docs/
+*.md

@@ -1,0 +1,18 @@
+{
+  "name": "@lm/ai",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI provider interface, Claude and Ollama providers, validators.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@lm/core": "workspace:*",
+    "@lm/platform": "workspace:*"
+  }
+}

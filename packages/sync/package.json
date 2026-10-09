@@ -1,0 +1,20 @@
+{
+  "name": "@lm/sync",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Sync engine, merge, GitHub/GitLab transports.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@lm/core": "workspace:*",
+    "@lm/crypto": "workspace:*",
+    "@lm/db": "workspace:*",
+    "@lm/platform": "workspace:*"
+  }
+}

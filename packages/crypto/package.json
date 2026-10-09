@@ -1,0 +1,14 @@
+{
+  "name": "@lm/crypto",
+  "version": "0.0.0",
+  "private": true,
+  "description": "libsodium wrappers: KDF, AEAD, keyed hash, record/blob codecs.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  }
+}

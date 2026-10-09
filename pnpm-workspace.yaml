@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+  - tooling/*
+
+# Dependencies allowed to run install scripts (pnpm blocks all others).
+onlyBuiltDependencies:
+  - '@swc/core'
+  - esbuild

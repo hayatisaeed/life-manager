@@ -15,8 +15,20 @@ assistant on top.
   multi-currency.**
 - **Light and dark modes**, with a minimal, modern design.
 
-**Status:** planning is complete and implementation hasn't started. See
+**Status:** Phase 0 (foundations) is in progress. See
 [docs/STATUS.md](docs/STATUS.md).
+
+## Development
+
+Requires Node 22 and pnpm 10.
+
+```bash
+pnpm install
+pnpm dev:web      # http://localhost:5173
+pnpm check        # lint + format + typecheck + unit tests
+pnpm test:e2e     # Playwright smoke tests (run `pnpm --filter @lm/web exec playwright install chromium` once)
+pnpm stories      # component stories (Ladle)
+```
 
 ## Documentation
 

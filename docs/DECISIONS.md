@@ -94,3 +94,29 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
   - Jalali vs. Gregorian is a display and recurrence setting, independent of
     the UI language.
   - The recurrence engine is our own and calendar-aware.
+
+### ADR-009 — Pin TypeScript 6.0 and ESLint 9
+2026-10-09 · accepted
+
+- **Context:** TypeScript 7 (the native compiler) and ESLint 10 are the latest
+  releases. typescript-eslint supports TypeScript only below 6.1, and
+  eslint-plugin-react and eslint-plugin-jsx-a11y don't support ESLint 10 yet.
+- **Decision:** Use TypeScript 6.0.x and ESLint 9.x.
+- **Consequences:** Upgrade both when their plugin ecosystems catch up. Check
+  the peer dependencies of typescript-eslint, eslint-plugin-react and
+  eslint-plugin-jsx-a11y first.
+
+### ADR-010 — Internal packages ship TypeScript source, no build step
+2026-10-09 · accepted
+
+- **Context:** Every consumer of `@lm/*` packages (Vite, Vitest, `tsc
+  --noEmit`) can compile TypeScript itself.
+- **Decision:**
+  - Each package's `exports` points at `src/index.ts`. Only `apps/*` have a
+    `build` script.
+  - `tooling/repo-checks` (`lm-check-deps`, part of `pnpm lint`) enforces the
+    dependency direction from ARCHITECTURE.md §3.
+- **Consequences:**
+  - No stale `dist/` folders and no build ordering between packages.
+  - A package must never rely on emit-only features (for example `const enum`
+    across packages); `isolatedModules` and `verbatimModuleSyntax` guard this.
