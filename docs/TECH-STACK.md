@@ -10,7 +10,7 @@ this list needs an entry in [DECISIONS.md](DECISIONS.md).
 | Package manager / monorepo | pnpm 10 workspaces + Turborepo 2 | Node 22 (`.nvmrc`) |
 | Lint / format | ESLint 9 (flat config, typescript-eslint strict, react, react-hooks, jsx-a11y, `@lm/eslint-plugin`) + Prettier | ESLint pinned to 9 until the React plugins support 10 (ADR-009) |
 | Internal packages | Export TypeScript source directly (`"exports": "./src/index.ts"`); no per-package build | Vite and Vitest compile them (ADR-010) |
-| Unit tests | Vitest + fast-check | |
+| Unit tests | Vitest + fast-check; `@vitest/coverage-v8` for coverage gates | `core` enforces 100% coverage |
 | E2E | Playwright (Chromium) against `apps/web` | |
 | Component stories | Ladle | lighter than Storybook |
 | UI framework | React 19 | |
@@ -28,7 +28,8 @@ this list needs an entry in [DECISIONS.md](DECISIONS.md).
 | Validation / schemas | zod | |
 | Dates | date-fns + date-fns-jalali, @internationalized/date for time zones | |
 | i18n | i18next + react-i18next | |
-| IDs / clocks | `ulid`, own HLC implementation in `core` | |
+| IDs / clocks | `ulid`, own HLC implementation in `core` | ULID entropy and HLC time come from the injected `Rng` and `Clock` |
+| Order keys | `fractional-indexing` | base-62 keys, compared by code unit (ADR-012) |
 | SRS | ts-fsrs | |
 | Text merge | node-diff3 | |
 | Crypto | libsodium-wrappers-sumo | Argon2id requires the sumo build |
