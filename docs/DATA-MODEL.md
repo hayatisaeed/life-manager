@@ -22,7 +22,10 @@ this document. If you change one, change the other in the same PR.
 - **References** are ids (`Ref<Task>`). Cross-module relationships use the
   generic **Link** entity rather than foreign keys, so any entity can link to
   any other.
-- **Ordering** uses fractional-index strings (`order: string`).
+- **Ordering** uses fractional-index strings (`order: string`), generated
+  with `orderKeyBetween` in `core`. Lists sort by `(order, id)` with plain
+  code-unit comparison. Two devices inserting at the same spot offline can
+  produce equal keys; the `id` tie-break keeps the order identical everywhere.
 - **Long text fields** (merged with diff3, see SYNC.md §6) are named `body`,
   `notes` or `content`. Use these names only for long text.
 - **Schema evolution:**

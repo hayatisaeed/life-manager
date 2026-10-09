@@ -11,6 +11,9 @@ short and current. Add new log entries at the top.
   - Scripts ready but not run: GitHub and GitLab API spikes
     (`spikes/forges/`). They need a throwaway repo and token.
   - Not started: Tauri and Capacitor spikes (need macOS/Windows/Android).
+- **P0.3 Core primitives is in progress:** ULID, HLC and fractional indexing
+  are done (ADR-012). Next: envelope + zod entity schemas, then merge, then
+  recurrence.
 - **Next milestone:** finish P0.2 by running `spikes/forges/*.mjs` against
   scratch repos (owner or a local session with `LM_TEST_*` tokens). P0.3 Core
   primitives does not depend on the spikes and can start in parallel.
@@ -34,6 +37,27 @@ short and current. Add new log entries at the top.
   plugins. CI ran on the P0.1 PRs.
 
 ## Session log
+
+### 2026-10-09 — P0.3 Core primitives (part 1: ULID, HLC, order keys)
+- `@lm/core`:
+  - `createUlidGenerator`, a monotonic `ulid` factory with an injected
+    `Clock` and `RandomSource`.
+  - The HLC: format/parse, `tickHlc`, `receiveHlc` and a stateful `HlcClock`
+    that resumes from a persisted value.
+  - `orderKeyBetween`/`orderKeysBetween` (over `fractional-indexing`) and
+    `compareOrdered` (`(order, id)` tie-break).
+- fast-check property tests:
+  - HLC round-trip, string order equal to tuple order, tick monotonicity under
+    clocks that jump backwards, and receive results above both inputs.
+  - Order keys stay sorted under any insert sequence.
+- Core tests now run with v8 coverage, with a 100% threshold enforced on
+  `hlc.ts` (the P0.3 AC). Merge and recurrence get the same threshold when
+  they land.
+- Recorded the HLC edge cases (device id alphabet, counter overflow,
+  never-reject skew policy) as ADR-012 and in SYNC.md §3. Recorded the
+  order-key tie rule in DATA-MODEL §1.
+- Surprise: another session had already merged the P0.2 part-1 spikes, so
+  this session's duplicate spike work was dropped.
 
 ### 2026-10-09 — P0.2 Spikes (part 1)
 - Added `spikes/` (outside the workspace, ESLint-ignored) with results in

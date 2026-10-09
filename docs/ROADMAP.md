@@ -53,7 +53,7 @@ clean clone and in CI.
 ADR and reflected in SYNC.md.
 
 ### P0.3 Core primitives (`packages/core`)
-- [ ] ULID, HLC (with tests for monotonicity and remote receive), fractional
+- [x] ULID, HLC (with tests for monotonicity and remote receive), fractional
   indexing
 - [ ] Envelope + zod entity schemas for **all** entities in DATA-MODEL.md, with
   schema versions and the upgrader framework

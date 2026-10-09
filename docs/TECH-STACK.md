@@ -28,7 +28,8 @@ this list needs an entry in [DECISIONS.md](DECISIONS.md).
 | Validation / schemas | zod | |
 | Dates | date-fns + date-fns-jalali, @internationalized/date for time zones | |
 | i18n | i18next + react-i18next | |
-| IDs / clocks | `ulid`, own HLC implementation in `core` | |
+| IDs / clocks | `ulid` (monotonic factory, injected clock and PRNG), own HLC implementation in `core` | |
+| Order keys | `fractional-indexing` | wrapped by `core` (`orderKeyBetween`) |
 | SRS | ts-fsrs | |
 | Text merge | node-diff3 | |
 | Crypto | libsodium-wrappers-sumo | Argon2id requires the sumo build |
