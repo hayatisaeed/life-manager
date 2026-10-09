@@ -32,7 +32,7 @@ this list needs an entry in [DECISIONS.md](DECISIONS.md).
 | SRS | ts-fsrs | |
 | Text merge | node-diff3 | |
 | Crypto | libsodium-wrappers-sumo | Argon2id requires the sumo build |
-| SQLite (web) | @sqlite.org/sqlite-wasm (OPFS VFS) | runs in a worker |
+| SQLite (web) | @sqlite.org/sqlite-wasm (`opfs-sahpool` VFS) | runs in a worker; one owner tab (ADR-011) |
 | SQLite (desktop) | tauri-plugin-sql | |
 | SQLite (mobile) | @capacitor-community/sqlite | |
 | Desktop shell | Tauri 2 + plugins: sql, http, notification, global-shortcut, autostart, updater, dialog, fs, os, deep-link; keyring via the `keyring` crate | |

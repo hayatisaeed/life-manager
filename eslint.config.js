@@ -22,6 +22,8 @@ export default tseslint.config(
       'apps/desktop/src-tauri/**',
       'apps/mobile/android/**',
       'apps/mobile/ios/**',
+      // Throwaway P0.2 code with its own install; see spikes/README.md.
+      'spikes/**',
     ],
   },
   js.configs.recommended,

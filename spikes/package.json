@@ -1,0 +1,18 @@
+{
+  "name": "lm-spikes",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Throwaway P0.2 spikes. Not part of the pnpm workspace; install with `pnpm install --ignore-workspace` in this folder.",
+  "type": "module",
+  "scripts": {
+    "sqlite": "node sqlite-opfs/run.mjs",
+    "argon2": "node argon2/run.mjs",
+    "github": "node forges/github.mjs",
+    "gitlab": "node forges/gitlab.mjs"
+  },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.53.4-build2",
+    "libsodium-wrappers-sumo": "0.8.4",
+    "playwright-core": "1.64.0"
+  }
+}
