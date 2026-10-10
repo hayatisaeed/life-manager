@@ -180,7 +180,7 @@ the spike stays unchecked until the owner's results are in.
   - 23 engine and forge tests, 97.6% branch coverage;
   - the simulator: 6 seeds × 300 ops in CI, with an assertion that real CAS
     races occurred.
-  - Locally, 40 seeds × 1,000 ops all converged; a 1,000-seed × 300-op run was in progress at commit time.
+  - Locally, 40 seeds × 1,000 ops and 1,000 seeds × 300 ops (seeds 1000–1999, 22 minutes) all converged.
   - A deliberately broken merge made the simulator fail, as it should.
   - Nightly workflow: 1,000 seeds × 1,000 ops in 10 shards.
 - **Surprise:** the first Merkle-walk version kept stale snapshot entries
