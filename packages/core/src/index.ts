@@ -5,3 +5,4 @@ export * from './hlc';
 export * from './id';
 export * from './merge';
 export * from './order';
+export * from './recurrence';

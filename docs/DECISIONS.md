@@ -246,3 +246,43 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
   - Conflict blocks are plain text markers in the field. The UI must detect
     them through `conflicts`, not by parsing.
 
+### ADR-015 — Recurrence engine
+2026-10-10 · accepted
+
+- **Context:** P0.3 needs a calendar-aware recurrence engine (ADR-008).
+  - `core` must stay pure, and it must not depend on the device time zone.
+  - date-fns-jalali works on JS `Date` objects in local time.
+  - DATA-MODEL.md's `Recurrence` has no start date, and a completed task hands
+    its rule to a new instance. So `count` and the defaults RFC 5545 takes
+    from DTSTART need a defined meaning across instances.
+- **Decision:**
+  - **Day arithmetic** uses Julian Day Numbers.
+    - Jalali conversion uses `jalaali-js` (Borkowski's algorithm, pure
+      integers, exact for Jalali years -61…3177). It's a small dependency
+      with no transitive packages.
+    - Gregorian conversion uses the same library's `g2d`/`d2g`.
+  - **Month days are clamped** to the month's length, instead of skipped as
+    in RFC 5545. Negative days count from the end.
+  - **Defaults:**
+    - Defaults come from the start date as in RFC 5545.
+    - `nextInstance` writes them out in the rule it returns, so chained
+      instances never drift.
+    - `count` on a stored rule means "instances left, including this one".
+  - **Modes:**
+    - In `fixed` mode, the next instance is the first occurrence after the
+      current due date. Missed occurrences aren't skipped.
+    - In `afterCompletion` mode, it's the completion date plus the interval,
+      then the first day matching the rule's filters.
+  - **Week start** is a caller option taken from the `weekStart` setting, not
+    part of the rule.
+  - **Never-matching rules:** a series with no occurrence for 4000 days, 1000
+    weeks, 1000 months or 400 years is treated as ended. This bounds the
+    work an impossible rule causes.
+- **Consequences:**
+  - The engine is exact and time-zone-free, so recurrence results are the
+    same on every device.
+  - ICS import (later) must map RFC 5545 rules that rely on skipping invalid
+    days. There is no exact equivalent; the closest is a `bySetPos` or `-1`
+    rule.
+  - Jalali rules are limited to Gregorian years 560–3798.
+

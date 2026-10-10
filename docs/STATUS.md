@@ -5,20 +5,23 @@ short and current. Add new log entries at the top.
 
 ## Current state
 
-- **Phase:** 0 (foundations). P0.1 is done; **P0.2 Spikes and P0.3 Core
-  primitives are in progress.**
-  - P0.3: ULID, HLC, fractional indexing (ADR-012), the envelope and entity
-    schemas (ADR-013), and the merge function (ADR-014) are done. Next: the
-    recurrence engine.
+- **Phase:** 0 (foundations). P0.1 and **P0.3 Core primitives are done**;
+  P0.2 Spikes is partly done.
+  - P0.3 delivered:
+    - ULID, HLC and fractional indexing (ADR-012);
+    - the envelope and entity schemas (ADR-013);
+    - the merge function (ADR-014);
+    - the recurrence engine (ADR-015).
   - Done: sqlite-wasm OPFS (ADR-011). Partly done: Argon2id (desktop-class
     CPU only).
   - GitHub and GitLab API spikes (`spikes/forges/`): the unauthenticated CORS
     preflights pass for every endpoint we need. The full scripts haven't been
     run; they need a throwaway repo and token.
   - Not started: Tauri and Capacitor spikes (need macOS/Windows/Android).
-- **Next milestone:** finish P0.2 by running `spikes/forges/*.mjs` against
-  scratch repos (owner or a local session with `LM_TEST_*` tokens). P0.3 Core
-  primitives continues in parallel (next task: the recurrence engine).
+- **Next milestone:** **P0.4 Crypto** (`packages/crypto`).
+  - Building it needs the owner's answer on the Argon2id parameters (see
+    Blockers). Everything else in P0.4 can proceed.
+  - P0.2's remaining spikes still need tokens or devices (see below).
 - **Blockers / needs owner input:**
   - **Argon2id parameters (security, data format).** SECURITY.md §2 says
     256 MiB on desktop and 64 MiB on mobile/web, but `lm.json` holds one `kdf`
@@ -41,6 +44,36 @@ short and current. Add new log entries at the top.
   plugins. CI ran on the P0.1 PRs.
 
 ## Session log
+
+### 2026-10-10 — P0.3 Core primitives (part 4): recurrence engine
+- `occurrences(rule, start, range, {weekStart})` expands fixed series.
+  `nextInstance(rule, {due, completedOn}, {weekStart})` computes the next
+  task instance and the rule to store on it.
+- **Supported rules:**
+  - daily, weekly, monthly and yearly;
+  - interval;
+  - `byWeekday`, `byMonthDay` (negative counts from the end, clamped),
+    `byMonth`, `bySetPos`;
+  - `until`, `count`;
+  - Gregorian and Jalali periods;
+  - `fixed` and `afterCompletion` modes.
+- Time-zone-free: everything uses Julian Day Numbers, and Jalali conversion
+  uses `jalaali-js` (ADR-015).
+- **Tests:**
+  - known Jalali dates (Nowruz, 30 Esfand in leap years);
+  - RFC-style cases (2nd Tuesday, last Friday, Friday the 13th,
+    Thanksgiving, Feb 29);
+  - week-start effects, edges of the calendar range, and impossible rules.
+  - **Properties:** results match an independent day-by-day oracle;
+    chaining `nextInstance` reproduces `occurrences`; Gregorian conversion
+    agrees with `Date.UTC`; Jalali dates round-trip.
+  - Core stays at 100% coverage.
+- **Surprises:**
+  - The first version scanned 10,000 empty periods before ending an
+    impossible rule, which timed out under coverage instrumentation. The cap
+    is now per frequency, and day matching no longer allocates.
+  - DATA-MODEL's `Recurrence` has no start date, so `count` on a stored rule
+    now means "instances left".
 
 ### 2026-10-10 — P0.3 Core primitives (part 3): merge function
 - `mergeRecords(base, ours, theirs)` in `@lm/core` implements SYNC.md §6:
