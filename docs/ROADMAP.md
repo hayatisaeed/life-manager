@@ -73,11 +73,11 @@ ADR and reflected in SYNC.md.
 rejected.
 
 ### P0.5 Local DB (`packages/db`)
-- [ ] `SqlDriver` interface + web, Tauri and Capacitor drivers
-- [ ] Migrations runner; tables for all entities; sync bookkeeping tables
-- [ ] Repository API (CRUD that stamps the HLC and writes the change log),
+- [x] `SqlDriver` interface + web, Tauri and Capacitor drivers
+- [x] Migrations runner; tables for all entities; sync bookkeeping tables
+- [x] Repository API (CRUD that stamps the HLC and writes the change log),
   live queries, FTS5 search
-- [ ] Encrypted attachment store
+- [x] Encrypted attachment store
 
 **AC:** The same repository test suite passes against the web driver in CI;
 desktop and mobile drivers are checked manually.

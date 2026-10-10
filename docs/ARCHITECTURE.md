@@ -103,21 +103,31 @@ Dependencies only point downward:
     (spikes/README.md).
   - Desktop: `tauri-plugin-sql`.
   - Mobile: `@capacitor-community/sqlite`.
+- The drivers live in `packages/db` (ADR-018). The Tauri and Capacitor shells
+  pass their plugin's connection in, and every driver queues calls so a
+  transaction is never interleaved.
 - Two layers of tables:
-  - **Typed tables per entity**, used for queries and indexes.
-  - **Sync bookkeeping tables:** `sync_base` (the last-synced plaintext of each
-    record), `sync_remote` (the remote path → blob SHA map and tree SHAs) and
-    `change_log` (dirty record ids).
+  - **One table per entity type** (`ent_<type>`): envelope columns plus the
+    record's `data` as JSON, with expression indexes on the fields lists
+    filter by (ADR-018).
+  - **Sync bookkeeping tables:** `sync_meta`, `sync_base` (the last-synced
+    plaintext of each record), `sync_remote` (the remote path → blob SHA map
+    and tree SHAs), `change_log` (dirty record ids) and `sync_kept` (remote
+    files this device can't use).
+- **Search:** an FTS5 index over each record's title and long text, with
+  Persian-aware normalization (ADR-018).
 - Every entity row carries:
   - `id`: a ULID.
   - `hlc`: when it was last modified.
   - `field_hlc`: a JSON map of per-field HLCs.
   - `deleted_at`: a tombstone.
   - `device_id`.
-- Attachments are content-addressed files in the app data directory, encrypted
-  at rest with the data key.
-- **Live queries:** repositories emit change events, and React hooks
-  (`useLiveQuery`) re-run on the tables they touched.
+- Attachments are content-addressed files in the app data directory (OPFS on
+  the web), encrypted at rest with the data key. Each file holds the same
+  `.lmb` bytes the repo stores (ADR-018).
+- **Live queries:** after each committed write, the database notifies
+  listeners for the entity types it touched. React hooks (`useLiveQuery`, in
+  `ui`) wrap `LmDatabase.liveQuery`.
 - **Migrations** are numbered SQL files plus optional TS data migrations. The
   synced record JSON carries a `schema` version, and `core` has upgraders for
   older record versions (see DATA-MODEL.md §1).

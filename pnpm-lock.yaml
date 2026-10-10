@@ -164,9 +164,31 @@ importers:
       '@lm/core':
         specifier: workspace:*
         version: link:../core
+      '@lm/crypto':
+        specifier: workspace:*
+        version: link:../crypto
       '@lm/platform':
         specifier: workspace:*
         version: link:../platform
+      '@sqlite.org/sqlite-wasm':
+        specifier: 3.53.4-build2
+        version: 3.53.4-build2
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@playwright/test':
+        specifier: 1.64.0
+        version: 1.64.0
+      '@vitest/coverage-v8':
+        specifier: 5.0.3
+        version: 5.0.3(vitest@5.0.3)
+      fast-check:
+        specifier: 4.10.2
+        version: 4.10.2
+      vite:
+        specifier: 8.3.4
+        version: 8.3.4(@types/node@26.6.4)
 
   packages/i18n: {}
 
@@ -961,6 +983,10 @@ packages:
   '@sindresorhus/merge-streams@2.3.0':
     resolution: {integrity: sha512-LtoMMhxAlorcGhmFYI+LhPgbPZCkgP6ra1YL604EeF6U98pLlQ3iWIGMdWSC+vWmPBWBNgmDBAhnAobLROJmwg==}
     engines: {node: '>=18'}
+
+  '@sqlite.org/sqlite-wasm@3.53.4-build2':
+    resolution: {integrity: sha512-kQVArGJA4z7s56Dm8t+eTBXad4LiohuVj9pfgDNOcxa+Ic5xMrWlLPTq6cT0hw5S4MIvtpsraW+B0wD+IPvC7A==}
+    engines: {node: '>=22'}
 
   '@swc/core-darwin-arm64@1.16.13':
     resolution: {integrity: sha512-JrMH2h7ohd4mOIneNRx/diqTmCDSdWfp9uOdQ8VJ2V2CA7jOJ1jWb+qp8RoZLqgiVmwDDC7eySKB1kbvZ+jVXQ==}
@@ -4229,6 +4255,8 @@ snapshots:
       '@noble/hashes': 2.4.0
 
   '@sindresorhus/merge-streams@2.3.0': {}
+
+  '@sqlite.org/sqlite-wasm@3.53.4-build2': {}
 
   '@swc/core-darwin-arm64@1.16.13':
     optional: true

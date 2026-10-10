@@ -5,33 +5,32 @@ short and current. Add new log entries at the top.
 
 ## Current state
 
-- **Phase:** 0 (foundations). P0.1 and **P0.3 Core primitives are done**;
-  P0.2 Spikes is partly done.
-  - P0.3 delivered:
-    - ULID, HLC and fractional indexing (ADR-012);
-    - the envelope and entity schemas (ADR-013);
-    - the merge function (ADR-014);
-    - the recurrence engine (ADR-015).
-  - Done: sqlite-wasm OPFS (ADR-011). Partly done: Argon2id (desktop-class
-    CPU only).
-  - GitHub and GitLab API spikes (`spikes/forges/`): the unauthenticated CORS
-    preflights pass for every endpoint we need.
-    - GitHub: the read-side checks pass. The full script (empty-repo
-      bootstrap, writes, CAS, GraphQL) is ready but waits for the owner's
-      local run.
-    - GitLab: the full script hasn't been run.
-  - Not started: Tauri and Capacitor spikes (need macOS/Windows/Android).
-- **P0.4 Crypto is done** (ADR-016, ADR-017), on branch
-  `ccr-cc42ae27-j072nd` together with the unfinished GitHub spike.
-- **Next milestone:** **P0.5 Local DB** (`packages/db`). P0.2's remaining
-  spikes still need tokens or devices (see below).
+- **Phase:** 0 (foundations).
+  - Done:
+    - P0.1 Monorepo & tooling;
+    - P0.3 Core primitives (ADR-012…015);
+    - P0.4 Crypto (ADR-016, ADR-017);
+    - **P0.5 Local DB** (ADR-018). Its acceptance check on desktop and
+      mobile drivers is still pending (see Unverified).
+  - Partly done: P0.2 Spikes.
+    - Done: sqlite-wasm OPFS (ADR-011).
+    - Argon2id was measured on desktop only.
+    - GitHub: read-side checks pass; the write/CAS/GraphQL script waits for
+      the owner's local run.
+    - Not run: GitLab, Tauri, Capacitor.
+- **Next milestone:** **P0.6 Sync engine** (`packages/sync`).
+  - The fake forge, the sync cycle and the convergence simulator can all be
+    built now.
+  - The real GitHub transport should wait for the owner's spike results,
+    which may change the empty-repo bootstrap and CAS details.
 - **Blockers / needs owner input:**
   - **GitHub spike: the owner needs to run `pnpm github` locally** (see
     spikes/README.md). Cloud sessions' GitHub proxy blocks REST writes,
-    GraphQL and `OPTIONS`, so the write, CAS and GraphQL checks can't run here
-    even with a scratch repo attached. GitLab still needs a scratch project and
-    a token.
+    GraphQL and `OPTIONS`. GitLab still needs a scratch project and a token.
 - **Known risks:**
+  - **Tauri SQL transactions** (ADR-018): `tauri-plugin-sql` uses a
+    connection pool, so BEGIN/COMMIT may hit different connections. The
+    Tauri spike must check this before P0.7.
   - GitLab commit concurrency (`last_commit_id`) and archive-download CORS
     are still unverified.
   - API rate limits during the first sync of large repos.
@@ -39,15 +38,17 @@ short and current. Add new log entries at the top.
     drags every HLC forward. P0.6 should decide how to handle that (ADR-012).
   - A 50k-record first import into sqlite-wasm takes about 5 s; it needs
     batching and a progress bar.
-- **Unverified:** the forge spikes, Argon2id on Android (it may lower the
-  ADR-016 default to 128 MiB), Tauri and Capacitor
-  plugins. CI ran on the P0.1 PRs.
+- **Unverified:**
+  - the forge spikes;
+  - Argon2id on Android (it may lower the ADR-016 default to 128 MiB);
+  - the Tauri and Capacitor SQL drivers on real devices, including FTS5 in
+    their SQLite builds (the P0.5 AC's manual check);
+  - OPFS `createWritable` in Safari.
 
 ## Handoff notes for the next session
 
-**P0.2 GitHub spike.** Status: waiting on the owner. Branch
-`ccr-cc42ae27-j072nd`; don't merge it as "spike done" until the owner's
-results are in.
+**P0.2 GitHub spike.** Status: waiting on the owner. The script is merged;
+the spike stays unchecked until the owner's results are in.
 
 1. The owner runs `pnpm github` in `spikes/` against their own private,
    empty scratch repo with a fine-grained PAT (Contents: Read and write on that
@@ -87,33 +88,88 @@ results are in.
    session. Don't retry them; give the owner a script to run instead. Read-only
    REST works (Node needs `NODE_USE_ENV_PROXY=1`).
 
-**P0.4 crypto, for whoever uses it next (P0.5–P0.7):**
+**P0.4 crypto, for whoever uses it next (P0.6–P0.7):**
 
 - Call `await initCrypto()` once at startup. Every other function is
   synchronous and throws `LmCryptoError` with a stable `code`; the messages
   are safe to log.
-- The public API is in `packages/crypto/src/index.ts`:
-  - `lm.json`: create, parse, unlock and rewrap;
-  - `deriveSubKeys`;
-  - `.lmr` and `.lmb` encrypt/decrypt;
-  - `recordPath` and `blobPath`;
-  - the recovery-key encodings.
-  Envelope JSON encoding is the caller's job; crypto takes bytes.
+- The public API is in `packages/crypto/src/index.ts`. Envelope JSON
+  encoding is the caller's job; crypto takes bytes.
 - **Don't change pinned test vectors to make tests pass.** They lock the
-  on-repo format; changing one breaks existing repos.
-- Web (P0.7):
-  - Run `unlockWithPassphrase`/`createLmJson` in a worker. The 256 MiB
-    Argon2id blocks for about 1 s.
-  - Lazy-load `@lm/crypto`: the Vite bundle is 643 KB (223 KB gzip), mostly
-    the libsodium wasm.
-  - A Vite bundle was smoke-tested in headless Chromium: create, unlock,
-    encrypt and decrypt all work.
-- Not built yet, because their tasks live elsewhere:
-  - the web "unlock for 7 days" WebCrypto wrap (SECURITY.md §3, P0.7);
-  - the `lm-locl` secret store (P0.7 `platform.secrets` on web);
-  - the attachment-at-rest store (P0.5).
+  on-repo format.
+- Web (P0.7): run `unlockWithPassphrase`/`createLmJson` in a worker (the
+  256 MiB Argon2id blocks for about 1 s), and lazy-load `@lm/crypto` (the
+  bundle is 223 KB gzipped).
+- Still to build in P0.7: the web "unlock for 7 days" wrap and the `lm-locl`
+  secret store.
+
+**P0.5 db, for P0.6 (sync) and P0.7 (shells):**
+
+- Open the database with `LmDatabase.open({ driver, clock, rng, onProblem })`.
+  It migrates and loads the device id and HLC state.
+  - Drivers: `openWorkerDriver(worker, file)` on the web, with the worker
+    entry at `packages/db/src/web/sqlite.worker.ts`;
+    `createTauriDriver(db)`; `createCapacitorDriver(conn)`;
+    `openMemoryDriver()` for tests.
+- **Sync still needs** (P0.6, intentionally not built yet):
+  - a "put remote record" path that writes a merged or remote envelope
+    without stamping a new HLC, calls `hlc.receive`, and clears or keeps
+    `change_log` entries;
+  - helpers for `sync_base`, `sync_remote`, `sync_kept` and
+    `lastSyncedCommit`.
+
+  The tables exist (migration 1). Add these as methods on `LmDatabase` or as
+  a sibling class over the same driver, using one transaction per sync batch.
+  A batch can pass several types to `notify`.
+- **Attachments:** the stored files are already the `.lmb` repo bytes, named
+  `basename(blobPath(keys, hash))`. Sync uploads and downloads them as they
+  are; verify downloads with `AttachmentStore.get`.
+- **The repository suite** (`src/test-support/repository-suite.ts`) runs in
+  Vitest and in Chromium (`pnpm --filter @lm/db test:e2e`, part of
+  `pnpm test:e2e` and CI). Add new cases there so both runs get them.
+- **P0.7 shell duties:**
+  - Elect the owner tab with Web Locks (ADR-011) before starting the worker.
+  - Pass `crypto.getRandomValues`-backed `rng` and `Date.now` as `clock`.
+  - Wire `onProblem` to the sync status UI.
 
 ## Session log
+
+### 2026-10-10 — P0.5 Local DB
+- **Drivers** (`SqlDriver`): in-memory sqlite-wasm (tests), a web worker on
+  `opfs-sahpool` over `postMessage` RPC, and Tauri and Capacitor adapters
+  over the plugins' connection objects.
+  - All share a serial queue, and transactions use `BEGIN IMMEDIATE`.
+  - One contract suite runs against all four; the Tauri and Capacitor runs
+    use fakes backed by real SQLite.
+- **Migrations:**
+  - a numbered runner that refuses a database from a newer app;
+  - migration 1 creates 46 `ent_*` tables (JSON `data` plus expression
+    indexes), `sync_meta`/`sync_remote`/`sync_base`/`change_log`/
+    `sync_kept` and an FTS5 index.
+- **`LmDatabase`:**
+  - create, get, list (where, orderBy, limit), update with per-field HLCs
+    on changed fields only, delete (tombstone) and restore;
+  - change log, persisted device id and HLC, decode-on-read with problem
+    reporting;
+  - live queries;
+  - Persian-aware prefix search.
+- **`AttachmentStore`** over a new `FileStore` interface in `@lm/platform`
+  (memory and OPFS). Files are `.lmb` bytes under keyed names.
+- **Tests:**
+  - 48 unit tests, covering 100% of lines and 96% of branches;
+  - a Playwright browser suite that runs the same repository cases through
+    the real worker on OPFS, plus persistence across a new worker and OPFS
+    attachments. Both pass, and the browser suite is now part of
+    `pnpm test:e2e`.
+- **Surprises:**
+  - The `opfs-sahpool` VFS has only 6 file slots by default and fails with
+    `SQLITE_CANTOPEN` when they run out. The worker now reserves capacity.
+  - FTS5's `unicode61` tokenizer splits Persian words at the ZWNJ. The index
+    stores both forms.
+- **Left for later:**
+  - sync-side record writes (P0.6);
+  - device verification of the Tauri and Capacitor drivers (with their
+    spikes).
 
 ### 2026-10-10 — P0.4 Crypto
 - The owner accepted the Argon2id proposal (ADR-016): one setting per repo,
