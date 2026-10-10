@@ -21,18 +21,11 @@ short and current. Add new log entries at the top.
       local run.
     - GitLab: the full script hasn't been run.
   - Not started: Tauri and Capacitor spikes (need macOS/Windows/Android).
-- **Next milestone:** **P0.4 Crypto** (`packages/crypto`).
-  - Building it needs the owner's answer on the Argon2id parameters (see
-    Blockers). Everything else in P0.4 can proceed.
-  - P0.2's remaining spikes still need tokens or devices (see below).
+- **P0.4 Crypto is done** (ADR-016, ADR-017), on branch
+  `ccr-cc42ae27-j072nd` together with the unfinished GitHub spike.
+- **Next milestone:** **P0.5 Local DB** (`packages/db`). P0.2's remaining
+  spikes still need tokens or devices (see below).
 - **Blockers / needs owner input:**
-  - **Argon2id parameters (security, data format).** SECURITY.md §2 says
-    256 MiB on desktop and 64 MiB on mobile/web, but `lm.json` holds one `kdf`
-    block, so the parameters are per repo and set by the device that creates
-    it. Proposal: one per-repo setting, default ops 3 / 256 MiB (0.8 s in
-    Chromium on a 2.1 GHz Xeon), dropping to 128 MiB if the Android
-    measurement exceeds ~3 s. Alternative: one wrapped key per KDF setting in
-    `lm.json`. Needs an owner decision before P0.4.
   - **GitHub spike: the owner needs to run `pnpm github` locally** (see
     spikes/README.md). Cloud sessions' GitHub proxy blocks REST writes,
     GraphQL and `OPTIONS`, so the write, CAS and GraphQL checks can't run here
@@ -46,7 +39,8 @@ short and current. Add new log entries at the top.
     drags every HLC forward. P0.6 should decide how to handle that (ADR-012).
   - A 50k-record first import into sqlite-wasm takes about 5 s; it needs
     batching and a progress bar.
-- **Unverified:** the forge spikes, Argon2id on Android, Tauri and Capacitor
+- **Unverified:** the forge spikes, Argon2id on Android (it may lower the
+  ADR-016 default to 128 MiB), Tauri and Capacitor
   plugins. CI ran on the P0.1 PRs.
 
 ## Handoff notes for the next session
@@ -93,12 +87,58 @@ results are in.
    session. Don't retry them; give the owner a script to run instead. Read-only
    REST works (Node needs `NODE_USE_ENV_PROXY=1`).
 
-**Also pending:** the owner's Argon2id decision (Blockers above). It gates
-P0.4, which is the next milestone. P0.4 work that doesn't depend on the KDF
-parameters (AEAD, keyed hash, sub-keys, recovery-key encoding, record/blob
-codecs) can start now.
+**P0.4 crypto, for whoever uses it next (P0.5–P0.7):**
+
+- Call `await initCrypto()` once at startup. Every other function is
+  synchronous and throws `LmCryptoError` with a stable `code`; the messages
+  are safe to log.
+- The public API is in `packages/crypto/src/index.ts`:
+  - `lm.json`: create, parse, unlock and rewrap;
+  - `deriveSubKeys`;
+  - `.lmr` and `.lmb` encrypt/decrypt;
+  - `recordPath` and `blobPath`;
+  - the recovery-key encodings.
+  Envelope JSON encoding is the caller's job; crypto takes bytes.
+- **Don't change pinned test vectors to make tests pass.** They lock the
+  on-repo format; changing one breaks existing repos.
+- Web (P0.7):
+  - Run `unlockWithPassphrase`/`createLmJson` in a worker. The 256 MiB
+    Argon2id blocks for about 1 s.
+  - Lazy-load `@lm/crypto`: the Vite bundle is 643 KB (223 KB gzip), mostly
+    the libsodium wasm.
+  - A Vite bundle was smoke-tested in headless Chromium: create, unlock,
+    encrypt and decrypt all work.
+- Not built yet, because their tasks live elsewhere:
+  - the web "unlock for 7 days" WebCrypto wrap (SECURITY.md §3, P0.7);
+  - the `lm-locl` secret store (P0.7 `platform.secrets` on web);
+  - the attachment-at-rest store (P0.5).
 
 ## Session log
+
+### 2026-10-10 — P0.4 Crypto
+- The owner accepted the Argon2id proposal (ADR-016): one setting per repo,
+  default ops 3 / 256 MiB, falling to 128 MiB if Android is too slow.
+- `packages/crypto`:
+  - Argon2id KEK, XChaCha20-Poly1305 seal/open, BLAKE2b keyed hash and
+    `crypto_kdf` sub-keys;
+  - recovery key as BIP-39 words (`@scure/bip39`) and as Crockford base32
+    with a checksum;
+  - `lm.json` create, parse (zod), unlock by passphrase or recovery key,
+    rewrap of either, and a key check;
+  - `.lmr`/`.lmb` codecs with AD binding, and sharded record/blob paths.
+- **Surprise:** SECURITY.md's 7-character sub-key contexts are invalid for
+  libsodium, which needs exactly 8 bytes. They are NUL-padded now (ADR-017).
+  I also added an `lm-chk1` context for the key check.
+- **Tests (41, 100% coverage enforced):**
+  - published vectors: the XChaCha draft and BLAKE2b from RFC 7693;
+  - BIP-39 reference vectors;
+  - cross-checks against `@noble` for Argon2id, BLAKE2b, `crypto_kdf` and
+    XChaCha;
+  - pinned regression vectors (sub-keys, paths, an `.lmr` file, a v1
+    `lm.json` fixture);
+  - tamper, relocation and truncation rejection;
+  - a check that SECURITY.md lists every context and AD prefix.
+- Specs updated: SECURITY.md §2, SYNC.md §1–2, TECH-STACK.md.
 
 ### 2026-10-10 — P0.2 GitHub spike: empty-repo case, more checks, partial run
 - The owner created a private, empty scratch repo. `forges/github.mjs` used

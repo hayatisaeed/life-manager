@@ -65,9 +65,9 @@ ADR and reflected in SYNC.md.
 **AC:** 100% branch coverage on merge, HLC and recurrence.
 
 ### P0.4 Crypto (`packages/crypto`)
-- [ ] KDF, AEAD, keyed hash, sub-key derivation, recovery key encode/decode
-- [ ] `lm.json` create, unlock and rewrap
-- [ ] Record and blob codecs with associated-data binding
+- [x] KDF, AEAD, keyed hash, sub-key derivation, recovery key encode/decode
+- [x] `lm.json` create, unlock and rewrap
+- [x] Record and blob codecs with associated-data binding
 
 **AC:** Known-answer tests pass. Tampered, relocated or truncated files are
 rejected.

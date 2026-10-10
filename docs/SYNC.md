@@ -21,7 +21,7 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
 ```
 
 - `name = hex(BLAKE2b-256(key = pathKey, msg = recordId))`. For blobs, the
-  message is the plaintext content hash.
+  message is the content hash as hex text (hex BLAKE2b-256 of the plaintext).
 - `s1` and `s2` are the first and second byte of `name` in hex. That gives
   65,536 leaf directories, so each tree stays small and the Merkle walk (§5)
   stays cheap.
@@ -47,12 +47,17 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
     { "kind": "passphrase", "nonce": "<b64>", "ct": "<b64>" },
     { "kind": "recovery",   "nonce": "<b64>", "ct": "<b64>" }
   ],
-  "keyCheck": "<b64 AEAD of constant 'lm-key-check'>",
+  "keyCheck": "<b64 of nonce ‖ AEAD('lm-key-check') under the lm-chk1 sub-key>",
   "createdAt": "2026-10-09"
 }
 ```
 
 - `lm.json` is created once, when the first device initializes an empty repo.
+  The KDF parameters are per repo (ADR-016); SECURITY.md §2 has the exact
+  encodings.
+- Unknown fields are kept when a device rewrites `lm.json`. A `version`
+  higher than the app knows makes the app refuse to unlock and ask for an
+  update.
 - If it already exists, a joining device unlocks it with the passphrase or the
   recovery key.
 - If the repo is not empty and has no `lm.json`, the app refuses to use it.
