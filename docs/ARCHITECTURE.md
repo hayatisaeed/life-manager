@@ -91,6 +91,8 @@ life-manager/
 Dependencies only point downward:
 `apps → ui → (core, db, sync, ai, calendar, importers, i18n) → (crypto, platform interfaces)`.
 `core` depends on nothing except `zod` and small pure utilities.
+`apps/web` may also depend on `db`, to bundle its SQLite worker entry
+(ADR-021).
 
 ## 4. Local storage
 

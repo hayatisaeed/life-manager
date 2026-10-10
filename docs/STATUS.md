@@ -29,12 +29,25 @@ short and current. Add new log entries at the top.
     - GitHub: read-side checks pass; the write/CAS/GraphQL script waits for
       the owner's local run.
     - Not run: GitLab, Tauri, Capacitor.
+  - **P0.7 App shells has started** (ADR-021). Done:
+    - i18n (en/fa) with RTL switching;
+    - calendar-system and digits settings;
+    - design tokens, themes and bundled fonts;
+    - base components with Ladle stories;
+    - the app layout (sidebar and bottom tabs);
+    - Today and Settings screens;
+    - the web app booting on the real database, with one owner tab.
 - **Next:**
   - **P0.6 part 2:** the GitHub transport, as soon as the owner's spike
     results are in (they settle the empty-repo bootstrap and the CAS
     details); then GitLab.
-  - P0.7 App shells can start in parallel: platform interfaces, theme, i18n
-    and the onboarding UI against the fake forge.
+  - **P0.7 part 2** (needs the transports):
+    - `platform.http` and `platform.secrets`;
+    - the onboarding wizard (local-only / new repo / join);
+    - the Settings → Sync page;
+    - a live sync status.
+  - **P0.7 part 3** (needs the Tauri/Capacitor spikes and native tooling):
+    the desktop and mobile shells, and the remaining platform adapters.
 - **Blockers / needs owner input:**
   - **GitHub spike: the owner needs to run `pnpm github` locally** (see
     spikes/README.md). Cloud sessions' GitHub proxy blocks REST writes,
@@ -56,7 +69,8 @@ short and current. Add new log entries at the top.
   - the Tauri and Capacitor SQL drivers on real devices, including FTS5 in
     their SQLite builds;
   - OPFS `createWritable` in Safari;
-  - the nightly workflow (it first runs after merge).
+  - the nightly workflow (it first runs after merge);
+  - the UI on real phones and Safari (checked in headless Chromium only).
 
 ## Handoff notes for the next session
 
@@ -116,6 +130,23 @@ the spike stays unchecked until the owner's results are in.
 - Still to build in P0.7: the web "unlock for 7 days" wrap and the `lm-locl`
   secret store.
 
+**P0.7 UI, for whoever builds the next screens:**
+
+- Add a screen under `packages/ui/src/features/<name>/`, with an `i18n.ts`
+  holding `xEn` and `xFa: typeof xEn`.
+  - Register the catalogs in `app/resources.ts` and the route in
+    `app/router.tsx`.
+  - Add a nav entry in `layout/AppShell.tsx` only when the screen exists.
+- Use only semantic Tailwind colors (`bg-bg`, `text-text-muted`,
+  `bg-accent`, …); the default palette is removed. Use logical properties
+  only.
+- Read settings and locale through `useApp()`. Format every date, number and
+  amount through `@lm/i18n`.
+- Every web e2e test runs in 4 projects (light/dark × en/fa) and should call
+  `expectNoA11yViolations`.
+- Import the in-memory test driver from `@lm/db/memory`, and attachments
+  from `@lm/db/attachments` (keeps the app bundle lean, ADR-021).
+
 **P0.6 sync, for the GitHub/GitLab transports and P0.7:**
 
 - `SyncEngine({ db, transport, keys, rng })` and `engine.sync()`, which
@@ -159,6 +190,44 @@ the spike stays unchecked until the owner's results are in.
 
 ## Session log
 
+### 2026-10-10 — P0.7 part 1: UI foundation, i18n, web boot
+- **`@lm/i18n`:**
+  - languages and direction;
+  - an `Intl`-based date formatter for either calendar, with Latin or
+    Persian digits (Persian full dates fixed to weekday-first);
+  - numbers, and money from integer minor units, formatted exactly;
+  - `todayIn(clock, timeZone)`; i18next setup.
+  - 8 tests, 100% coverage.
+- **`@lm/ui`:**
+  - tokens and the Tailwind v4 theme, with bundled Inter and Vazirmatn;
+  - the theme hook (system/light/dark);
+  - Button, Switch, SegmentedControl, Select, EmptyState and SyncPill, with
+    Ladle stories (light/dark, LTR/RTL);
+  - AppShell (sidebar and bottom tabs) and hash routing;
+  - Today (greeting and date in the user's calendar) and Settings
+    (language, calendar, week start, digits, theme, sync note);
+  - a settings store on the synced record;
+  - `Boot` (Web Lock owner, retrying open, takeover).
+  - 14 tests.
+- **`@lm/platform`:** `claimOwnership` (Web Locks) and `cryptoRng`.
+- **`apps/web`:** boots `Boot` with the SQLite worker on OPFS. The e2e suite
+  covers boot, settings surviving a reload, and two-tab takeover, with axe,
+  in light/dark × LTR/RTL: 12 passing.
+- **Surprises:**
+  - Two quick settings changes raced to create the settings record and one
+    was lost. Writes are now serialized and optimistic.
+  - The e2e suite then caught a flicker: a live-query result from an
+    earlier write briefly undid a later change. Unsaved changes now stay
+    layered over the database value until written. A unit test covers it.
+  - Under parallel `pnpm test` load, `core`'s property tests ran 7–9 s,
+    past Vitest's 5 s default. `core` now allows 30 s per test; the runs and
+    assertions are unchanged.
+  - The boot screen flashed light and LTR on dark Persian devices; fixed.
+  - The sqlite-wasm loader and libsodium were in the main bundle; they're
+    now behind `@lm/db/memory` and `@lm/db/attachments`.
+- **Checked visually** in headless Chromium (desktop and phone sizes, light
+  English and dark Persian). Real phones and Safari are not checked.
+
 ### 2026-10-10 — P0.6 part 1: sync engine, fake forge, simulator
 - **Spec contradiction, fixed with the owner (ADR-019).** Records were bound
   to their id, which a device can't learn from a keyed file name. They are
@@ -180,7 +249,7 @@ the spike stays unchecked until the owner's results are in.
   - 23 engine and forge tests, 97.6% branch coverage;
   - the simulator: 6 seeds × 300 ops in CI, with an assertion that real CAS
     races occurred.
-  - Locally, 40 seeds × 1,000 ops all converged; a 1,000-seed × 300-op run was in progress at commit time.
+  - Locally, 40 seeds × 1,000 ops and 1,000 seeds × 300 ops (seeds 1000–1999, 22 minutes) all converged.
   - A deliberately broken merge made the simulator fail, as it should.
   - Nightly workflow: 1,000 seeds × 1,000 ops in 10 shards.
 - **Surprise:** the first Merkle-walk version kept stale snapshot entries

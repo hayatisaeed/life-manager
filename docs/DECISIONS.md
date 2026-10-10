@@ -505,3 +505,63 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
       (SYNC.md §9, P10.4);
     - the HLC drift guard (ADR-012 risk).
 
+### ADR-021 — UI foundation and web boot
+2026-10-10 · accepted
+
+- **Context:** P0.7 part 1 builds the design system, i18n, the app frame and
+  the web shell. The GitHub/GitLab transports (P0.6 part 2) aren't ready, so
+  onboarding waits.
+- **Decision:**
+  - **Display dates with `Intl`.** The `persian` calendar is Jalali, and
+    `-nu-arabext` gives Persian digits; no date library is needed for
+    display. `date-fns-jalali` stays out until calendar maths in the UI
+    needs it.
+    - Calendar logic stays in core's engine (ADR-015).
+    - A `LocalDate` is formatted at noon UTC, so no time zone can shift the
+      day.
+    - CLDR's full Persian pattern puts the year first, so Persian full dates
+      are "weekday + long date".
+  - **Routing:** TanStack Router with code-based routes and hash history.
+    The app is static files on every platform (web, Tauri, Capacitor), with
+    no server to rewrite deep links.
+  - **Catalogs live with their feature** (`features/<x>/i18n.ts`) and are
+    merged in `app/resources.ts`. Each `fa` catalog is typed as `typeof` its
+    `en` catalog, so a missing key fails the typecheck.
+  - **Settings** use the synced `settings` record (DATA-MODEL.md §14).
+    - Until the first change, the UI shows defaults for the browser language
+      (fa: Jalali, Saturday week start, Persian digits, IRR).
+    - Changes apply at once and are written one at a time; two quick changes
+      used to race to create the record.
+    - Unsaved changes stay layered over the database value until written,
+      so a live-query result from an earlier write can't briefly undo a
+      later change.
+    - The screen sets `aria-busy` while a write is pending.
+  - **Boot:**
+    1. `Boot` (in `ui`) claims the Web Lock (ADR-011).
+    2. It opens the database through a platform-supplied driver factory,
+       retrying while another tab's worker releases OPFS.
+    3. It loads settings and renders `App`. A tab that loses the lock frees
+       the database and shows "open in another tab".
+
+    Until settings exist, it follows the OS theme and the browser
+    language's direction.
+  - **Bundle hygiene:** `@lm/db` exposes the in-memory driver as
+    `@lm/db/memory` and the attachment store as `@lm/db/attachments`. The
+    main bundle then carries neither the sqlite-wasm loader nor libsodium.
+    `apps/web` may depend on `@lm/db`, because it bundles the SQLite worker
+    entry.
+  - **Theme tokens** are CSS variables on `data-theme`, mapped into Tailwind
+    v4's `@theme`. Tailwind's default palette is removed, so components can
+    only use semantic colors. Fonts (Inter, Vazirmatn) are bundled from
+    `@fontsource-variable`, never loaded from a CDN.
+  - **Accessibility:** every web e2e test runs axe (WCAG 2 A/AA) in
+    light/dark × LTR/RTL.
+- **Consequences:**
+  - The main web bundle is 584 KB (188 KB gzipped). Route-level code
+    splitting comes as screens are added.
+  - Not built yet:
+    - the tablet overlay sidebar (it's a sidebar from 640px);
+    - the navigation entries for future modules;
+    - `platform.http`, `platform.secrets`, notifications, audio and deep
+      links (they arrive with onboarding and the features that use them).
+

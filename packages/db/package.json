@@ -5,7 +5,10 @@
   "description": "SQLite schema, migrations, repositories, live queries.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./attachments": "./src/attachments.ts",
+    "./memory": "./src/driver/wasm.ts",
+    "./sqlite.worker": "./src/web/sqlite.worker.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
