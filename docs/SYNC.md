@@ -71,8 +71,12 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
 }
 ```
 
-- The AEAD associated data is `"lmr1|" + id`. A file moved to another record's
-  path therefore fails to decrypt, and the engine skips it and logs an error.
+- The AEAD associated data is `"lmr1|" + name`, where `name` is the file's
+  keyed-hash name (a device that has never seen a record can't know its id
+  before decrypting it). After decrypting, the engine checks that
+  `BLAKE2b(pathKey, envelope.id) == name`. A file moved to another record's
+  path therefore fails to decrypt or fails that check, and the engine skips it
+  and logs an error (ADR-012).
 - **HLC format:** `ISO-millis-counter(4 hex)-deviceId`. These strings sort
   lexicographically in time order. Each device keeps one HLC; it is advanced on
   every local write and on receiving a remote HLC.

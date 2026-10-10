@@ -145,3 +145,22 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
 - **Consequences:** ARCHITECTURE.md §4 is updated. Queries go through
   repository helpers that know the JSON paths. Tauri, Capacitor and on-phone
   Argon2 timings remain unverified until someone runs them on real hardware.
+
+### ADR-012 — Record AD binds the file name; 8-byte KDF contexts; base32 recovery key
+2026-10-10 · accepted
+
+- **Context:** SYNC.md bound record ciphertext to `"lmr1|" + id`, but a device
+  downloading a record it has never seen only knows the file's path, not the
+  id inside it, so it couldn't decrypt. libsodium's `crypto_kdf` needs
+  exactly 8-byte contexts, and the spec listed 7-byte ones.
+- **Decision:**
+  - Record AD is `"lmr1|" + name` (the keyed-hash file name). After
+    decrypting, the codec checks `BLAKE2b(pathKey, id) == name`
+    (`assertRecordName`). Relocation is still rejected: a moved file fails
+    the AEAD, and a file re-encrypted for another path fails the name check.
+  - Sub-key contexts are `lm-rec1_`, `lm-blob_`, `lm-path_`, `lm-locl_`.
+  - The recovery key is shown only as grouped base32 with a checksum byte;
+    the BIP-39 word form is dropped (it needs a 2,048-word list and gives no
+    extra security).
+- **Consequences:** SYNC.md §3 and SECURITY.md §2 are updated. The format is
+  fixed from the first release, so no migration is needed.

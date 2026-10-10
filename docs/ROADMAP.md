@@ -53,21 +53,21 @@ clean clone and in CI.
 ADR and reflected in SYNC.md.
 
 ### P0.3 Core primitives (`packages/core`)
-- [ ] ULID, HLC (with tests for monotonicity and remote receive), fractional
+- [x] ULID, HLC (with tests for monotonicity and remote receive), fractional
   indexing
-- [ ] Envelope + zod entity schemas for **all** entities in DATA-MODEL.md, with
+- [x] Envelope + zod entity schemas for **all** entities in DATA-MODEL.md, with
   schema versions and the upgrader framework
-- [ ] The merge function (SYNC.md §6) with property tests for commutativity,
+- [x] The merge function (SYNC.md §6) with property tests for commutativity,
   idempotence and convergence
-- [ ] Recurrence engine (Gregorian and Jalali, `fixed` and `afterCompletion`
+- [x] Recurrence engine (Gregorian and Jalali, `fixed` and `afterCompletion`
   modes)
 
 **AC:** 100% branch coverage on merge, HLC and recurrence.
 
 ### P0.4 Crypto (`packages/crypto`)
-- [ ] KDF, AEAD, keyed hash, sub-key derivation, recovery key encode/decode
-- [ ] `lm.json` create, unlock and rewrap
-- [ ] Record and blob codecs with associated-data binding
+- [x] KDF, AEAD, keyed hash, sub-key derivation, recovery key encode/decode
+- [x] `lm.json` create, unlock and rewrap
+- [x] Record and blob codecs with associated-data binding
 
 **AC:** Known-answer tests pass. Tampered, relocated or truncated files are
 rejected.

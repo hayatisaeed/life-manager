@@ -27,14 +27,16 @@ implement our own primitives.
 | Record and blob encryption | XChaCha20-Poly1305 IETF with random 24-byte nonces |
 | Key wrapping | XChaCha20-Poly1305 |
 | File names | BLAKE2b-256 keyed with `pathKey` |
-| Sub-keys | `crypto_kdf_derive_from_key(dataKey)` with contexts `"lm-rec1"`, `"lm-blob"`, `"lm-path"`, `"lm-locl"` |
-| Recovery key | 256 random bits, shown as 24 words (BIP-39 English list) or as a base32 grouped string |
+| Sub-keys | `crypto_kdf_derive_from_key(dataKey, id 1)` with the 8-byte contexts `"lm-rec1_"`, `"lm-blob_"`, `"lm-path_"`, `"lm-locl_"` (ADR-012) |
+| Recovery key | 256 random bits plus a 1-byte BLAKE2b checksum, shown as a grouped base32 string (`XXXX-XXXX-…`, 53 characters) |
 
 **Associated data:**
 
-- Records: `"lmr1|" + recordId`.
+- Records: `"lmr1|" + name` (the keyed-hash file name), plus a post-decrypt
+  check that the record id hashes to that name.
 - Blobs: `"lmb1|" + contentHash`.
 - Wrapped keys: `"lmk1|" + kind`.
+- Device-local secrets (web): `"lml1|" + secretName`.
 
 ## 3. Key lifecycle
 
