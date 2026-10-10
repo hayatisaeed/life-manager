@@ -12,17 +12,18 @@ short and current. Add new log entries at the top.
     - P0.4 Crypto (ADR-016, ADR-017, and ADR-019's format fix);
     - P0.5 Local DB (ADR-018). Its manual check of the desktop and mobile
       drivers is still pending.
-  - **P0.6 Sync engine is about two-thirds done** (ADR-020).
+  - **P0.6 Sync engine: code complete, AC open** (ADR-020, ADR-022).
     - Done:
       - the transport interface;
-      - the fake forge;
+      - the fake forge (branch and per-file CAS);
       - the full sync cycle wired into the database;
-      - the convergence simulator (CI on every PR, plus a nightly
-        1,000-seed run).
-    - Left:
-      - the real GitHub and GitLab transports;
-      - their opt-in contract tests;
-      - the AC's real two-device sync on each forge.
+      - the convergence simulator, run with both CAS kinds (CI on every PR,
+        plus a nightly 1,000-seed run);
+      - the GitHub and GitLab transports, tested in CI against in-memory
+        API emulators;
+      - one contract suite for every transport, with opt-in real-repo runs.
+    - Left (the AC): the contract suite and a real two-device sync against
+      real GitHub and GitLab repos. Neither can run in a cloud session.
   - Partly done: P0.2 Spikes.
     - Done: sqlite-wasm OPFS.
     - Argon2id was measured on desktop only.
@@ -38,33 +39,43 @@ short and current. Add new log entries at the top.
     - Today and Settings screens;
     - the web app booting on the real database, with one owner tab.
 - **Next:**
-  - **P0.6 part 2:** the GitHub transport, as soon as the owner's spike
-    results are in (they settle the empty-repo bootstrap and the CAS
-    details); then GitLab.
-  - **P0.7 part 2** (needs the transports):
+  - **P0.7 part 2.** The transports are ready; pass `platform.http` as
+    `fetch`.
     - `platform.http` and `platform.secrets`;
     - the onboarding wizard (local-only / new repo / join);
     - the Settings → Sync page;
     - a live sync status.
   - **P0.7 part 3** (needs the Tauri/Capacitor spikes and native tooling):
     the desktop and mobile shells, and the remaining platform adapters.
+  - Close P0.6 once the owner's real-forge runs pass (below).
 - **Blockers / needs owner input:**
   - **GitHub spike: the owner needs to run `pnpm github` locally** (see
     spikes/README.md). Cloud sessions' GitHub proxy blocks REST writes,
     GraphQL and `OPTIONS`. GitLab still needs a scratch project and a token.
+  - **Owner: run the opt-in contract tests** against a private scratch repo
+    on each forge (never a data repo):
+    `LM_TEST_GITHUB_TOKEN=… LM_TEST_GITHUB_REPO=owner/name pnpm --filter
+    @lm/sync exec vitest run src/contract.test.ts` (and
+    `LM_TEST_GITLAB_TOKEN`, `LM_TEST_GITLAB_PROJECT` for GitLab). Behind a
+    proxy, Node needs `NODE_USE_ENV_PROXY=1`. ADR-022 lists what they
+    settle.
 - **Known risks:**
   - **Tauri SQL transactions** (ADR-018): `tauri-plugin-sql` uses a
     connection pool, so BEGIN/COMMIT may hit different connections. The
     Tauri spike must check this before P0.7.
-  - GitLab commit concurrency (`last_commit_id`) and archive-download CORS
-    are still unverified.
+  - GitLab's per-file CAS (`last_commit_id`) and its 400 messages, GitHub's
+    first commit through the contents API, and the rate-limit headers' CORS
+    exposure are built from the docs, not verified (ADR-022). The
+    archive-download CORS is still unverified; the transport doesn't use
+    the archive yet.
   - API rate limits during the first sync of large repos.
   - The HLC has no maximum-drift guard; one device with a far-future clock
     drags every HLC forward. Still open (ADR-012, ADR-020).
   - A 50k-record first import into sqlite-wasm takes about 5 s; it needs
     batching and a progress bar.
 - **Unverified:**
-  - the forge spikes;
+  - the forge spikes, and the GitHub and GitLab transports against real
+    forges;
   - Argon2id on Android (it may lower the ADR-016 default to 128 MiB);
   - the Tauri and Capacitor SQL drivers on real devices, including FTS5 in
     their SQLite builds;
@@ -147,22 +158,27 @@ the spike stays unchecked until the owner's results are in.
 - Import the in-memory test driver from `@lm/db/memory`, and attachments
   from `@lm/db/attachments` (keeps the app bundle lean, ADR-021).
 
-**P0.6 sync, for the GitHub/GitLab transports and P0.7:**
+**P0.6 sync, for P0.7:**
 
 - `SyncEngine({ db, transport, keys, rng })` and `engine.sync()`, which
   returns `ok | conflict | rateLimited | authError | error`.
   `packages/sync/src/test-support/devices.ts` shows the wiring.
-- **A real transport must behave exactly like `FakeForge`:**
-  - `commit` returns `'conflict'` when the branch moved;
-  - `listTree` returns direct children with SHAs;
-  - `readBlobs` leaves out missing blobs;
-  - it throws `RateLimitedError` and `AuthError`.
-
-  Write the contract tests (`LM_TEST_GITHUB_*`) as one shared suite run
-  against both `FakeForge` and the real transport.
+- **Transports:** `new GitHubTransport({ owner, repo, branch, token, fetch,
+  apiBase? })` and `new GitLabTransport({ project, branch, token, fetch,
+  baseUrl? })`. Pass `platform.http` as `fetch` and the token from
+  `platform.secrets`. `branch` is the repo's default branch; onboarding
+  looks it up (for an empty GitHub repo, `GET /repos/{o}/{r}` still names
+  it).
 - **The engine doesn't create `lm.json` or the first commit.** It reports an
-  error on an empty repo. Onboarding (P0.7) does that, through
-  `createLmJson` and the transport, and the spike decides how on GitHub.
+  error on an empty repo. Onboarding does: `getHead()` returns null, then
+  `transport.commit(null, [{ path: 'lm.json', content }])`. On GitHub that
+  must be the only file. A `'conflict'` means another device set the repo up
+  first, so switch to "join".
+- Onboarding's repo checks (private, push access) are not in the transport;
+  P0.7 adds them.
+- **Testing a new transport behavior:** change the emulator in
+  `src/test-support/*-emulator.ts` to match the real forge, then add the
+  case to `transport-contract.ts` so every transport is held to it.
 - **The simulator:** `SIM_SEEDS`, `SIM_OPS` and `SIM_FIRST_SEED` control
   `pnpm --filter @lm/sync exec vitest run src/sim`. Run it after any change
   to `packages/sync` or the merge (AGENTS.md §4.3).
@@ -190,6 +206,41 @@ the spike stays unchecked until the owner's results are in.
 
 ## Session log
 
+### 2026-10-10 — P0.6 part 2: GitHub and GitLab transports
+- The owner asked for "P0.8". The roadmap has none, and they picked P0.6
+  part 2.
+- **`@lm/sync`:**
+  - `GitHubTransport`: git data API, GraphQL batch reads with a REST
+    fallback, the first commit through the contents API, and a
+    fast-forward-only ref update as the CAS.
+  - `GitLabTransport`: the commits API with per-file `last_commit_id` CAS,
+    and offset-paged trees.
+  - Shared `http.ts`: errors, rate-limit tracking, zod parsing, base64,
+    bounded concurrency.
+- **Interface change (ADR-022):** `commit` may return `{ sha, rebased: true }`
+  (GitLab). The engine then keeps the pulled head as `lastSyncedCommit`, so
+  it doesn't skip the other devices' commits underneath its own.
+  `FakeForge({ cas: 'perFile' })` models this, and the simulator runs every
+  seed with both CAS kinds.
+- **Tests:**
+  - GitHub and GitLab API emulators;
+  - one contract suite over five targets: the fake forge in both CAS kinds,
+    and both transports on their emulators, all running in CI. Opt-in
+    real-repo runs come on top;
+  - engine two-device syncs through each real transport, including a CAS
+    race on GitHub and a rebased push on GitLab;
+  - error, rate-limit and malformed-response cases.
+  - Locally, 40 seeds × 1,000 ops converged with both CAS kinds (11 min).
+    The nightly workflow now runs 20 shards × 50 seeds, so the doubled runs
+    still fit its 60-minute limit.
+- **Surprises:**
+  - A test caught a wrong GitHub Enterprise GraphQL URL (`/apigraphql`)
+    before it shipped.
+  - `@lm/core`'s property tests timed out at Vitest's 5 s default when every
+    package tests in parallel. PR #15 fixed this on main (a 30 s timeout)
+    while this branch was open; the merge keeps that fix.
+- **Unverified:** everything against real forges (see Blockers). Nothing
+  platform-specific was touched.
 ### 2026-10-10 — P0.7 part 1: UI foundation, i18n, web boot
 - **`@lm/i18n`:**
   - languages and direction;

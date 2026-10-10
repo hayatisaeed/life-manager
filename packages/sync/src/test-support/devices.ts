@@ -4,7 +4,8 @@ import { deriveSubKeys, initCrypto, type DataKey, type SubKeys } from '@lm/crypt
 import { LmDatabase, type SqlDriver } from '@lm/db';
 import { openMemoryDriver } from '@lm/db/memory';
 import { SyncEngine, type SyncEngineOptions } from '../engine';
-import { FakeForge, type FakeForgeHooks } from '../fake-forge';
+import { FakeForge, type FakeForgeHooks, type FakeForgeOptions } from '../fake-forge';
+import type { SyncTransport } from '../transport';
 
 let keys: SubKeys | null = null;
 
@@ -28,8 +29,8 @@ export function seededRng(seed: number): Rng {
 }
 
 /** A forge that has been set up the way onboarding leaves it (SYNC.md §8). */
-export function initializedForge(): FakeForge {
-  const forge = new FakeForge();
+export function initializedForge(options: FakeForgeOptions = {}): FakeForge {
+  const forge = new FakeForge(options);
   forge.commit(null, [{ path: 'lm.json', content: '{"format":"life-manager","version":1}' }]);
   return forge;
 }
@@ -49,11 +50,22 @@ export async function device(
   options: Partial<SyncEngineOptions> = {},
   startMs = Date.UTC(2026, 9, 10),
 ): Promise<Device> {
+  const transport = forge.transport();
+  const d = await deviceOn(transport, seed, options, startMs);
+  return { ...d, hooks: transport.hooks };
+}
+
+/** A device syncing through any transport (the real ones on their emulators). */
+export async function deviceOn(
+  transport: SyncTransport,
+  seed: number,
+  options: Partial<SyncEngineOptions> = {},
+  startMs = Date.UTC(2026, 9, 10),
+): Promise<Omit<Device, 'hooks'>> {
   const clock = Object.assign(() => clock.now, { now: startMs });
   const rng = seededRng(seed);
   const driver = await openMemoryDriver();
   const db = await LmDatabase.open({ driver, clock, rng });
-  const transport = forge.transport();
   const sleeps: number[] = [];
   const engine = new SyncEngine({
     db,
@@ -67,7 +79,7 @@ export async function device(
     },
     ...options,
   });
-  return { db, driver, engine, hooks: transport.hooks, clock, sleeps };
+  return { db, driver, engine, clock, sleeps };
 }
 
 export const task = (over: Partial<EntityData<'task'>> = {}): EntityData<'task'> => ({

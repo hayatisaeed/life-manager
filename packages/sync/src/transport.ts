@@ -13,6 +13,14 @@ export interface TreeEntry {
 export type FileChange =
   { path: string; content: string | Uint8Array } | { path: string; delete: true };
 
+/**
+ * What `commit` did. A plain SHA: the commit sits directly on `parent`.
+ * `rebased`: the forge put it on a newer head than `parent` because the
+ * commits in between touched only other files (GitLab's per-file CAS, SYNC.md
+ * §7), so the new head also holds changes this device hasn't pulled yet.
+ */
+export type CommitResult = CommitSha | 'conflict' | { sha: CommitSha; rebased: true };
+
 export interface RateLimitState {
   /** Requests (or points) left in the current window, if the forge says. */
   remaining: number | null;
@@ -36,9 +44,12 @@ export interface SyncTransport {
   /**
    * Creates one commit on top of `parent` and moves the branch to it, only if
    * the branch is still at `parent` (compare-and-swap). Returns 'conflict' if
-   * it moved. `parent` is null only for the first commit of an empty repo.
+   * it moved. A forge with per-file CAS (GitLab) instead returns 'conflict'
+   * only if one of the changed files moved, and `rebased` if the commit landed
+   * on a newer head. `parent` is null only for the first commit of an empty
+   * repo; GitHub then takes exactly one file (`lm.json`, SYNC.md §8).
    */
-  commit(parent: CommitSha | null, changes: readonly FileChange[]): Promise<CommitSha | 'conflict'>;
+  commit(parent: CommitSha | null, changes: readonly FileChange[]): Promise<CommitResult>;
   rateLimit(): RateLimitState;
 }
 

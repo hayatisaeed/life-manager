@@ -16,7 +16,8 @@
     "@lm/crypto": "workspace:*",
     "@lm/db": "workspace:*",
     "@lm/platform": "workspace:*",
-    "@noble/hashes": "2.4.0"
+    "@noble/hashes": "2.4.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "5.0.3",

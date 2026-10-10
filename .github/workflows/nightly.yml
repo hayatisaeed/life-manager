@@ -17,7 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        # 50 seeds per shard: each seed runs with both CAS kinds (ADR-022).
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -26,9 +27,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Simulate 100 seeds (5 devices × 1,000 ops)
+      - name: Simulate 50 seeds (5 devices × 1,000 ops)
         env:
-          SIM_FIRST_SEED: ${{ matrix.shard * 100 + 1 }}
-          SIM_SEEDS: '100'
+          SIM_FIRST_SEED: ${{ matrix.shard * 50 + 1 }}
+          SIM_SEEDS: '50'
           SIM_OPS: '1000'
         run: pnpm --filter @lm/sync exec vitest run src/sim
