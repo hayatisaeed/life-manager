@@ -15,8 +15,11 @@ short and current. Add new log entries at the top.
   - Done: sqlite-wasm OPFS (ADR-011). Partly done: Argon2id (desktop-class
     CPU only).
   - GitHub and GitLab API spikes (`spikes/forges/`): the unauthenticated CORS
-    preflights pass for every endpoint we need. The full scripts haven't been
-    run; they need a throwaway repo and token.
+    preflights pass for every endpoint we need.
+    - GitHub: the read-side checks pass. The full script (empty-repo
+      bootstrap, writes, CAS, GraphQL) is ready but waits for the owner's
+      local run.
+    - GitLab: the full script hasn't been run.
   - Not started: Tauri and Capacitor spikes (need macOS/Windows/Android).
 - **Next milestone:** **P0.4 Crypto** (`packages/crypto`).
   - Building it needs the owner's answer on the Argon2id parameters (see
@@ -45,6 +48,55 @@ short and current. Add new log entries at the top.
     batching and a progress bar.
 - **Unverified:** the forge spikes, Argon2id on Android, Tauri and Capacitor
   plugins. CI ran on the P0.1 PRs.
+
+## Handoff notes for the next session
+
+**P0.2 GitHub spike.** Status: waiting on the owner. Branch
+`ccr-cc42ae27-j072nd`; don't merge it as "spike done" until the owner's
+results are in.
+
+1. The owner runs `pnpm github` in `spikes/` against their own private,
+   empty scratch repo with a fine-grained PAT (Contents: Read and write on that
+   repo only). The script writes `spikes/forges/github-result.json`; ask the
+   owner to paste or commit it. Never put the repo name or token in the repo.
+2. When the results arrive:
+   - Fill in the GitHub section of `spikes/README.md` and the results table.
+   - Write an ADR (the next free number in DECISIONS.md) covering:
+     - **Empty-repo bootstrap.** If the git data API rejects writes on an
+       empty repo (expected: 409), SYNC.md §7/§8 and the `SyncTransport`
+       design need a first-commit path through
+       `PUT /repos/{o}/{r}/contents/lm.json`. A 409 from
+       `GET /git/ref/heads/{b}` means "empty repo" (verified).
+     - **CAS.** Confirm that `force:false` gives 422 for a same-parent race,
+       for a stale (ancestor) parent, and under truly concurrent PATCHes. If
+       any of these returns 200, the CAS design in SYNC.md §7 is broken: stop
+       and ask the owner (AGENTS.md §8).
+     - Whether GraphQL returns `text: null` / `isBinary: true` for `.lmb`
+       blobs. SYNC.md already plans REST for binary; confirm it.
+     - Whether the empty `s2` directory disappears after its last file is
+       deleted.
+     - Whether the author `noreply@invalid` is accepted, and what committer
+       GitHub records for a PAT. It must not leak a device name (SECURITY.md).
+     - The GraphQL point cost of a 100-blob query, to size batches for the
+       rate-limit tracker.
+   - Update SYNC.md in the same commit if anything changed. Tick the GitHub
+     spike in ROADMAP.md.
+3. **Cloud-session limits found this session** (also in AGENTS.md §7): the
+   session's GitHub proxy injects its own token and allows REST reads only.
+   - REST writes (`git/blobs`, `git/trees`, `git/refs`, `contents` PUT) →
+     403.
+   - GraphQL → 403.
+   - `OPTIONS` → 405.
+   - The GitHub MCP integration also can't create repositories.
+
+   So no real-forge write test or browser CORS test can run in a cloud
+   session. Don't retry them; give the owner a script to run instead. Read-only
+   REST works (Node needs `NODE_USE_ENV_PROXY=1`).
+
+**Also pending:** the owner's Argon2id decision (Blockers above). It gates
+P0.4, which is the next milestone. P0.4 work that doesn't depend on the KDF
+parameters (AEAD, keyed hash, sub-keys, recovery-key encoding, record/blob
+codecs) can start now.
 
 ## Session log
 
