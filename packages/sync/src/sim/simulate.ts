@@ -21,6 +21,8 @@ export interface SimOptions {
   seed: number;
   devices: number;
   ops: number;
+  /** The forge's CAS semantics: GitHub's ('branch', the default) or GitLab's. */
+  cas?: 'branch' | 'perFile';
 }
 
 export interface SimReport {
@@ -34,6 +36,8 @@ export interface SimReport {
   conflicts: number;
   /** Commits the forge refused because another device got there first. */
   casRejections: number;
+  /** Commits that landed on a newer head than their parent ('perFile' only). */
+  rebased: number;
 }
 
 type Synced = 'task' | 'note';
@@ -45,10 +49,10 @@ const TAGS = [
   '01J9ZT0000000000000000TAG3',
 ];
 
-export async function simulate({ seed, devices: count, ops }: SimOptions): Promise<SimReport> {
+export async function simulate({ seed, devices: count, ops, cas }: SimOptions): Promise<SimReport> {
   const rng = seededRng(seed);
   const pick = <T>(xs: readonly T[]): T => xs[Math.floor(rng() * xs.length)] as T;
-  const forge = initializedForge();
+  const forge = initializedForge(cas ? { cas } : {});
   const start = Date.UTC(2026, 9, 10);
   const devices: Device[] = [];
   for (let i = 0; i < count; i++) {
@@ -143,6 +147,7 @@ export async function simulate({ seed, devices: count, ops }: SimOptions): Promi
     syncs,
     conflicts,
     casRejections: forge.rejected,
+    rebased: forge.rebased,
   };
 }
 

@@ -320,7 +320,11 @@ export class SyncEngine {
         // next walk lists them (and finds our blob already known).
         for (const dir of parents(f.path)) await tx.deleteRemote(dir);
       }
-      await tx.setMeta(META_LAST, newHead);
+      // A rebased commit sits on changes we haven't pulled, so remember the
+      // head we pulled instead: the next cycle walks the new head and picks
+      // them up (our own blobs are already in the snapshot, so they aren't
+      // downloaded again).
+      await tx.setMeta(META_LAST, typeof newHead === 'string' ? newHead : head);
     });
     return { pushed: prepared.files.length, more: prepared.more };
   }

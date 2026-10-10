@@ -261,9 +261,13 @@ interface SyncTransport {
   listTree(commit: CommitSha, path: string, sha: string | undefined): Promise<TreeEntry[]>;
   readBlobs(entries: { path: string; sha: BlobSha }[]): Promise<Map<string, Uint8Array>>;
   readFile(path: string, ref: CommitSha): Promise<Uint8Array | null>;   // lm.json
-  commit(parent: CommitSha | null, changes: FileChange[]): Promise<CommitSha | 'conflict'>;
+  commit(parent: CommitSha | null, changes: FileChange[]): Promise<CommitResult>;
   rateLimit(): RateLimitState;
 }
+// CommitSha: landed on `parent`. 'conflict': refused. { sha, rebased: true }:
+// landed on a newer head (GitLab's per-file CAS); the engine then keeps the
+// head it pulled as lastSyncedCommit, so the next cycle pulls what it skipped.
+type CommitResult = CommitSha | 'conflict' | { sha: CommitSha; rebased: true };
 ```
 
 - Transports throw `RateLimitedError` (with the reset time) and `AuthError`
@@ -271,37 +275,66 @@ interface SyncTransport {
   and `authError` outcomes; any other error is `error`.
 - A recursive-tree shortcut for small GitHub repos (§5) can be added inside
   the GitHub transport without changing this interface.
+- Transports take an injected `fetch` (the shell passes `platform.http`, which
+  is native HTTP on Tauri and Capacitor) and never call the global one.
+- Every commit uses the message `sync` and the identity `Life Manager
+  <noreply@invalid>` as both author and committer (§1).
+- Error messages name the endpoint and HTTP status only: never the token, a
+  ref or a file name.
+- Responses are validated with zod. Anything unexpected, including a truncated
+  tree listing, is an error, never a silently shorter list.
 
 ### GitHub (github.com and GitHub Enterprise; configurable API base)
 
-- **Head:** `GET /repos/{o}/{r}/git/ref/heads/{branch}`.
-- **Trees:** `GET /repos/{o}/{r}/git/trees/{sha}`, with `?recursive=1` where
-  appropriate.
+- **Head:** `GET /repos/{o}/{r}/git/ref/heads/{branch}`. A 409 means the repo
+  is empty (`null`); a 404 is an error (wrong branch, or no access).
+- **Trees:** `GET /repos/{o}/{r}/git/trees/{sha}` (the root by commit SHA).
+  Submodule entries are skipped.
 - **Blob reads:**
-  - Batch with **GraphQL**: about 100 aliased `object(oid:)` lookups per query,
-    returning `... on Blob { text }`.
-  - Binary `.lmb` files are read with `GET /git/blobs/{sha}`, which returns
-    base64.
+  - Batch with **GraphQL**: up to 100 aliased `object(oid:)` lookups per query,
+    passed as `GitObjectID` variables, returning
+    `... on Blob { text isBinary isTruncated }`. A blob that comes back binary
+    or truncated is re-read over REST.
+  - Binary `.lmb` files are read with `GET /git/blobs/{sha}` and the raw media
+    type.
+  - The GraphQL endpoint is `{api}/graphql`, or `/api/graphql` when the REST
+    base is an Enterprise `/api/v3`.
+- **`lm.json`:** `GET /contents/{path}?ref=` with the raw media type.
+- **First commit (empty repo):** the git data API refuses to write to an empty
+  repo, so the first commit goes through `PUT /contents/lm.json`: exactly one
+  file. A 409 or 422 (the file already exists) is a `'conflict'`.
 - **Commit:**
   1. Create binary blobs with `POST /git/blobs`.
   2. `POST /git/trees` with `base_tree` set to the parent's tree. Text records
      go inline as `content`; blobs go in by SHA.
   3. `POST /git/commits` with the parent commit.
   4. `PATCH /git/refs/heads/{branch}` with `force: false`. **A 422 error means
-     someone else moved the branch, so return `'conflict'`.**
+     someone else moved the branch, so return `'conflict'`.** Without force,
+     GitHub only fast-forwards; our commit's only parent is `parent`, so the
+     update succeeds only while the branch is still there.
+  - The transport remembers the tree of each commit it made, so the next push
+    doesn't re-read it.
 - **Token:** a fine-grained PAT limited to this one repo, with **Contents:
   Read and write** and **Metadata: Read**.
 - **Rate limits:** 5,000 REST requests per hour and 5,000 GraphQL points per
-  hour. The engine tracks the `x-ratelimit-*` headers and backs off.
+  hour. The transport tracks `x-ratelimit-*` per resource and reports the
+  tightest live window. A 403 with no budget left, or a 403/429 with
+  `Retry-After` (secondary limits), is `RateLimitedError`. Any other 401/403
+  is `AuthError`.
 
 ### GitLab (gitlab.com and self-managed; configurable base URL)
 
 - **Head:** `GET /projects/:id/repository/branches/:branch`.
-- **Trees:** `GET /projects/:id/repository/tree?path=&ref=&per_page=100`, with
-  keyset pagination. Entries carry `id`, which is the object SHA.
+  A 404 "Branch Not Found" means the project is empty (`null`); any other 404
+  is an error.
+- **Trees:** `GET /projects/:id/repository/tree?path=&ref=&per_page=100&page=`,
+  with offset pages (directories are small, and this doesn't depend on the
+  `Link` header being exposed to the browser). Entries carry `id`, which is
+  the object SHA. A 404 "Tree Not Found" is an empty listing.
 - **Blob reads:**
   - `GET /projects/:id/repository/blobs/:sha/raw`, with bounded concurrency
     (6).
+  - `lm.json`: `GET /repository/files/:path/raw?ref=`.
   - For a first sync, try the archive endpoint
     (`/repository/archive.tar.gz?sha=`) first. **This needs a spike** to check
     CORS and size behavior.
@@ -316,17 +349,26 @@ interface SyncTransport {
   - Commits that only touch other files may land on a head we haven't seen.
     That is safe, because records merge per file and we pick them up on the
     next cycle.
-  - `last_commit_id` per path comes from the commit response for files we
-    pushed, and from the `X-Gitlab-Last-Commit-Id` header when we read a file
-    through the files API.
-  - **This needs a spike to verify.**
+  - `last_commit_id` per path, and whether to `create` or `update`, comes
+    from `GET /repository/files/:path?ref=<parent>` (its JSON
+    `last_commit_id`; a 404 means create). Files this device pushed are
+    remembered from the commit response and skip the lookup. A stale entry
+    only costs one refused commit, after which the cache is cleared. A delete
+    of a file already gone at the parent is dropped.
+  - A 400 whose message says the file already exists, doesn't exist, or has
+    changed is a `'conflict'`; any other 400 is an error.
+  - When the commit's parent isn't ours, the result is `rebased` (above).
+  - The convergence simulator runs with both CAS kinds.
+  - **This needs a spike to verify** against real GitLab (the opt-in contract
+    tests do it).
 - **Token:** a project access token (Developer role) or a PAT with the `api`
   scope. GitLab's REST writes need `api`.
 
 ### Fake (tests)
 
 `FakeForge` in `@lm/sync`: an in-memory implementation with exactly the CAS
-semantics above, and tree SHAs that change exactly when something below them
+semantics above (`cas: 'branch'`, the default, as on GitHub; or
+`cas: 'perFile'`, as on GitLab), and tree SHAs that change exactly when something below them
 changes. Tests inject races (`beforeCommit`), failures and rate limits
 (`onRequest`).
 
@@ -337,8 +379,16 @@ changes. Tests inject races (`beforeCommit`), failures and rate limits
   Syncs sometimes race another device mid-push.
 - At the end every device syncs until nothing changes. They must then hold
   identical records, with no record lost and nothing left unpushed or kept.
-- CI runs 6 seeds × 300 ops on every PR. The nightly workflow runs 1,000
-  seeds × 1,000 ops.
+- Every seed runs once with each CAS kind. CI runs 6 seeds × 300 ops on every
+  PR. The nightly workflow runs 1,000 seeds × 1,000 ops.
+
+**Emulators and the contract suite:** `GitHubEmulator` and `GitLabEmulator`
+(`src/test-support`) stand in for the forge APIs behind a `fetch`, so the real
+transports run in CI. One contract suite runs against the fake forge (both
+CAS kinds), both transports on their emulators, and, opt-in, both transports
+on real repos (`LM_TEST_GITHUB_TOKEN` + `LM_TEST_GITHUB_REPO`,
+`LM_TEST_GITLAB_TOKEN` + `LM_TEST_GITLAB_PROJECT`; each run uses a scratch
+branch).
 
 ## 8. Onboarding flow
 

@@ -86,12 +86,14 @@ desktop and mobile drivers are checked manually.
 - [x] `SyncTransport` interface + fake forge
 - [x] Sync cycle (SYNC.md §5), Merkle diff, batching, backoff, rate-limit
   tracking, lock
-- [ ] GitHub transport; GitLab transport
+- [x] GitHub transport; GitLab transport (ADR-021; run against emulators in
+  CI, not yet against the real forges)
 - [x] **Convergence simulator:** 5 devices × 1,000 random operations, random
   sync order, must reach identical state. Runs in CI (short) and nightly
   (long).
-- [ ] Opt-in contract tests against real repos (`LM_TEST_GITHUB_*`,
-  `LM_TEST_GITLAB_*` env vars)
+- [x] Opt-in contract tests against real repos (`LM_TEST_GITHUB_*`,
+  `LM_TEST_GITLAB_*` env vars). The suite exists and also runs against the
+  emulators; it has not run against a real repo yet.
 
 **AC:** The simulator passes 1,000 seeds. A real two-device sync works on
 GitHub and on GitLab.

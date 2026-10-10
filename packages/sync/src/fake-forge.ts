@@ -1,5 +1,6 @@
 import { gitBlobSha } from './git-sha';
 import {
+  type CommitResult,
   type CommitSha,
   type FileChange,
   type RateLimitState,
@@ -7,13 +8,21 @@ import {
   type TreeEntry,
 } from './transport';
 
-// An in-memory forge with exactly the CAS semantics of SYNC.md §7: a commit
-// lands only if the branch is still at its parent. Shared by every simulated
-// device; tests can inject races, rate limits and failures.
+// An in-memory forge with exactly the CAS semantics of SYNC.md §7. Shared by
+// every simulated device; tests can inject races, rate limits and failures.
+//   'branch' (GitHub): a commit lands only if the branch is still at its parent.
+//   'perFile' (GitLab, `last_commit_id`): it lands on the current head unless a
+//   file it changes was changed after its parent.
 
 interface Commit {
   parent: CommitSha | null;
   files: ReadonlyMap<string, string>; // path → blob sha
+  /** path → the last commit that changed it (GitLab's `last_commit_id`). */
+  touched: ReadonlyMap<string, CommitSha>;
+}
+
+export interface FakeForgeOptions {
+  cas?: 'branch' | 'perFile';
 }
 
 export interface FakeForgeHooks {
@@ -32,6 +41,10 @@ export class FakeForge {
   /** Commits refused because the branch had moved (CAS conflicts). */
   rejected = 0;
   requestCount = 0;
+  /** Commits that landed on a newer head than their parent ('perFile' only). */
+  rebased = 0;
+
+  constructor(private readonly options: FakeForgeOptions = {}) {}
 
   /** A transport for one device. Each device gets its own hooks and rate-limit view. */
   transport(hooks: FakeForgeHooks = {}): SyncTransport & { hooks: FakeForgeHooks } {
@@ -74,12 +87,23 @@ export class FakeForge {
   }
 
   /** Commits directly, as another device or a setup step would. */
-  commit(parent: CommitSha | null, changes: readonly FileChange[]): CommitSha | 'conflict' {
-    if (parent !== this.head) {
-      this.rejected++;
-      return 'conflict';
+  commit(parent: CommitSha | null, changes: readonly FileChange[]): CommitResult {
+    const moved = parent !== this.head;
+    if (moved) {
+      const was = this.touched(parent);
+      const now = this.touched(this.head);
+      if (
+        this.options.cas !== 'perFile' ||
+        changes.some((c) => was.get(c.path) !== now.get(c.path))
+      ) {
+        this.rejected++;
+        return 'conflict';
+      }
     }
-    const files = new Map(parent === null ? [] : this.commits.get(parent)?.files);
+    const onto = this.head === null ? undefined : this.commits.get(this.head);
+    const files = new Map(onto?.files);
+    const touched = new Map(onto?.touched);
+    const sha = `c${String(++this.commitCount).padStart(39, '0')}`;
     for (const change of changes) {
       if ('delete' in change) {
         files.delete(change.path);
@@ -88,15 +112,21 @@ export class FakeForge {
           typeof change.content === 'string'
             ? new TextEncoder().encode(change.content)
             : change.content;
-        const sha = gitBlobSha(bytes);
-        this.blobs.set(sha, bytes.slice());
-        files.set(change.path, sha);
+        const blobSha = gitBlobSha(bytes);
+        this.blobs.set(blobSha, bytes.slice());
+        files.set(change.path, blobSha);
       }
+      touched.set(change.path, sha);
     }
-    const sha = `c${String(++this.commitCount).padStart(39, '0')}`;
-    this.commits.set(sha, { parent, files });
+    this.commits.set(sha, { parent: this.head, files, touched });
     this.head = sha;
-    return sha;
+    if (!moved) return sha;
+    this.rebased++;
+    return { sha, rebased: true };
+  }
+
+  private touched(commit: CommitSha | null): ReadonlyMap<string, CommitSha> {
+    return (commit === null ? undefined : this.commits.get(commit)?.touched) ?? new Map();
   }
 
   /** Files at a commit (tests). */

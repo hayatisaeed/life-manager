@@ -505,3 +505,61 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
       (SYNC.md §9, P10.4);
     - the HLC drift guard (ADR-012 risk).
 
+
+### ADR-021 — GitHub and GitLab transports
+2026-10-10 · accepted (real-forge behavior still to be confirmed by the
+owner's spike and contract-test runs)
+
+- **Context:** P0.6 part 2 builds the real transports. The P0.2 forge spikes
+  haven't run yet: a cloud session's GitHub proxy blocks writes and GraphQL,
+  and GitLab has no scratch project. The transports were built from the
+  documented APIs and SYNC.md §7, and the open questions are listed below.
+- **Decision:**
+  - **`commit` can return `{ sha, rebased: true }`.** GitLab's per-file CAS
+    (`last_commit_id`, create-fails-if-exists) lets a commit land on a head
+    this device hasn't pulled. The engine then records the head it pulled,
+    not the new one, as `lastSyncedCommit`. The next cycle walks the new head
+    and picks up the skipped commits. Its own blobs are already in the
+    snapshot, so they aren't downloaded again. Without this, the
+    `last === head` shortcut would skip those changes until the head moved
+    again.
+  - **`FakeForge` gains `cas: 'perFile'`,** and the convergence simulator runs
+    every seed with both CAS kinds.
+  - **GitHub:**
+    - The first commit of an empty repo goes through the contents API: one
+      file, `lm.json`. A 409 or 422 there is a conflict.
+    - GraphQL reads text blobs, passing OIDs as variables. Binary or
+      truncated results fall back to REST raw reads.
+    - The Enterprise GraphQL URL is derived from `/api/v3`.
+    - The tree of each commit the transport made is cached.
+  - **GitLab:**
+    - `last_commit_id` comes from a files-API lookup at the parent, or from a
+      cache of files this device pushed. The cache is cleared on any refusal.
+    - Trees use offset pagination, not keyset, so the transport doesn't need
+      the `Link` header.
+  - **Both:**
+    - Transports take an injected `fetch` (`platform.http` in P0.7).
+    - Responses are validated with zod.
+    - Error messages carry only the endpoint and the status.
+    - Rate limits are tracked per resource.
+  - **Testing:**
+    - `GitHubEmulator` and `GitLabEmulator` implement the used endpoints
+      behind `fetch`.
+    - One contract suite runs against the fake forge (both CAS kinds), both
+      emulated transports, and, opt-in, the real forges on a scratch branch.
+  - **Dependencies:** `zod` added to `@lm/sync` (already used across the
+    repo).
+- **Open, for the owner's runs:**
+  - whether the contents API creates the first commit on an empty repo with
+    the given branch;
+  - GitHub's 422 on every CAS race;
+  - GitLab's exact 400 messages for the per-file checks, and whether
+    `last_commit_id` refuses stale updates and deletes;
+  - which `RateLimit-*` and `x-ratelimit-*` headers browsers can read (CORS).
+
+  If any of these differs, fix the transport and its emulator together.
+- **Consequences:**
+  - The engine and simulator stay forge-agnostic.
+  - The P0.6 AC ("a real two-device sync works on GitHub and on GitLab")
+    stays open until the opt-in contract tests and a manual two-device sync
+    pass against real repos.
