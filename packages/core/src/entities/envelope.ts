@@ -21,6 +21,8 @@ export const envelopeSchema = z.looseObject({
   deletedAt: instant.nullable(),
   createdAt: instant,
   data: plainMap,
+  // Fields holding an unresolved text-merge conflict block (SYNC.md §6).
+  conflicts: z.array(z.string()).exactOptional(),
 });
 
 export type RawEnvelope = z.output<typeof envelopeSchema>;
@@ -36,6 +38,7 @@ export type EntityRecord<T extends EntityType = EntityType> = {
     deletedAt: string | null;
     createdAt: string;
     data: EntityData<K>;
+    conflicts?: string[];
     [extra: string]: unknown;
   };
 }[T];
