@@ -30,8 +30,11 @@ short and current. Add new log entries at the top.
     Chromium on a 2.1 GHz Xeon), dropping to 128 MiB if the Android
     measurement exceeds ~3 s. Alternative: one wrapped key per KDF setting in
     `lm.json`. Needs an owner decision before P0.4.
-  - Running the forge spikes needs a throwaway GitHub repo and GitLab project
-    with tokens; this cloud session could not reach them.
+  - **GitHub spike: the owner needs to run `pnpm github` locally** (see
+    spikes/README.md). Cloud sessions' GitHub proxy blocks REST writes,
+    GraphQL and `OPTIONS`, so the write, CAS and GraphQL checks can't run here
+    even with a scratch repo attached. GitLab still needs a scratch project and
+    a token.
 - **Known risks:**
   - GitLab commit concurrency (`last_commit_id`) and archive-download CORS
     are still unverified.
@@ -44,6 +47,33 @@ short and current. Add new log entries at the top.
   plugins. CI ran on the P0.1 PRs.
 
 ## Session log
+
+### 2026-10-10 — P0.2 GitHub spike: empty-repo case, more checks, partial run
+- The owner created a private, empty scratch repo. `forges/github.mjs` used
+  to crash on an empty repo, which is exactly the onboarding case. It now
+  records how the git data API behaves on an empty repo and bootstraps the
+  first commit with the contents API.
+- New checks:
+  - locally computed blob SHAs match the tree;
+  - the `.lmr` sharded layout;
+  - the `noreply@invalid` author;
+  - delete via `sha:null`;
+  - a binary `.lmb` round trip, and what GraphQL returns for binary blobs;
+  - stale-parent → 422;
+  - 5 rounds of concurrent fast-forwards.
+- It writes `forges/github-result.json`.
+- **Surprise:** the cloud session proxy blocks every REST write
+  (`git/blobs`, `git/trees`, `contents` PUT), GraphQL and `OPTIONS`, even
+  for a repo attached with push access. Writes, CAS and GraphQL can't be
+  tested from a cloud session; the owner has to run the script locally.
+- **Verified here:**
+  - an empty repo answers `GET /git/ref` with 409 "Git Repository is
+    empty.";
+  - local git blob SHAs match GitHub's (20/20, read-only on the code repo);
+  - the non-recursive tree walk agrees with the recursive tree;
+  - CORS and rate-limit headers are present on real responses;
+  - a REST blob read takes about 260 ms.
+- No ADR yet; it waits for the owner's run.
 
 ### 2026-10-10 — P0.3 Core primitives (part 4): recurrence engine
 - `occurrences(rule, start, range, {weekStart})` expands fixed series.
