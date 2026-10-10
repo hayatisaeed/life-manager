@@ -120,3 +120,28 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
   - No stale `dist/` folders and no build ordering between packages.
   - A package must never rely on emit-only features (for example `const enum`
     across packages); `isolatedModules` and `verbatimModuleSyntax` guard this.
+
+### ADR-011 — P0.2 spike results; one generic `records` table
+2026-10-10 · accepted
+
+- **Context:** The P0.2 spikes (see `spikes/README.md`) ran in a cloud
+  container without macOS, Windows, Android or access to `api.github.com`.
+  GitLab CORS (including the archive endpoint and the
+  `X-Gitlab-Last-Commit-Id` header) is confirmed. sqlite-wasm handles 50k JSON
+  rows comfortably and ships FTS5. Argon2id at 256 MiB takes ~1.3 s on a
+  desktop-class CPU.
+- **Decision:**
+  - Keep the sync design in SYNC.md unchanged. GitHub CORS and GitLab
+    `last_commit_id` CAS are modelled in the fake forge and must be confirmed
+    by the opt-in contract tests (`LM_TEST_GITHUB_*`, `LM_TEST_GITLAB_*`).
+  - Store every entity in **one `records` table** (`id, type, hlc, field_hlc,
+    deleted_at, created_at, data JSON`) with per-type expression indexes on
+    `json_extract(data, …)`, instead of one typed table per entity. With ~45
+    entity types this removes a large amount of schema/migration code, keeps
+    unknown fields from newer app versions automatically, and the spike shows
+    indexed JSON lookups are fast enough.
+  - The web driver uses sqlite-wasm's `opfs-sahpool` VFS in a worker, which
+    doesn't need cross-origin isolation headers.
+- **Consequences:** ARCHITECTURE.md §4 is updated. Queries go through
+  repository helpers that know the JSON paths. Tauri, Capacitor and on-phone
+  Argon2 timings remain unverified until someone runs them on real hardware.

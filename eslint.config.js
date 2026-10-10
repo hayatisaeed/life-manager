@@ -22,6 +22,8 @@ export default tseslint.config(
       'apps/desktop/src-tauri/**',
       'apps/mobile/android/**',
       'apps/mobile/ios/**',
+      // Throwaway spike code (ROADMAP P0.2).
+      'spikes/**',
     ],
   },
   js.configs.recommended,
@@ -88,6 +90,11 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    // Tests may assert on known-present values.
+    files: ['**/*.test.{ts,tsx}', '**/test/**/*.{ts,tsx}'],
+    rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
   },
   {
     // CLI scripts may print.

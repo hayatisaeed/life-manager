@@ -99,7 +99,8 @@ Dependencies only point downward:
   - Desktop: `tauri-plugin-sql`.
   - Mobile: `@capacitor-community/sqlite`.
 - Two layers of tables:
-  - **Typed tables per entity**, used for queries and indexes.
+  - **One `records` table** holding every entity as JSON, with per-type
+    expression indexes on `json_extract(data, …)` for queries (ADR-011).
   - **Sync bookkeeping tables:** `sync_base` (the last-synced plaintext of each
     record), `sync_remote` (the remote path → blob SHA map and tree SHAs) and
     `change_log` (dirty record ids).

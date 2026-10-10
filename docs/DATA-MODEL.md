@@ -24,7 +24,11 @@ this document. If you change one, change the other in the same PR.
   any other.
 - **Ordering** uses fractional-index strings (`order: string`).
 - **Long text fields** (merged with diff3, see SYNC.md §6) are named `body`,
-  `notes` or `content`. Use these names only for long text.
+  `notes` or `content` (plus the fields marked `body` below). Use these names
+  only for long text. When a text merge keeps both versions, the record gets
+  `data.hasConflict = true` until the user resolves it.
+- Merge field kinds (set, ordered list, long text) are declared per type in
+  `core/src/entities/registry.ts`.
 - **Schema evolution:**
   - Bump the entity's `schema` number and add an upgrader in
     `core/src/entities/<entity>/upgrade.ts`.
@@ -70,8 +74,8 @@ synced.
 |---|---|
 | **InboxItem** | `text, audioBlob?: BlobRef, transcript?, transcriptStatus: 'none'\|'pending'\|'done'\|'failed', source: 'quick'\|'share'\|'voice'\|'import', processedAt?` |
 | **Project** | `name, areaId?, status: 'active'\|'onHold'\|'done'\|'archived', notes, color?, order` |
-| **Task** | `title, notes, projectId?, parentId?, areaId?, goalId?, milestoneId?, priority, status: 'todo'\|'doing'\|'done'\|'cancelled', dueDate?: LocalDate, dueTime?: LocalTime, scheduledAt?: Instant, estimateMin?, recurrence?, reminders: Reminder[], tags: string[], completedAt?, order` |
-| **Goal** | `title, why: body, areaId?, targetDate?, status, progressMode: 'milestones'\|'tasks'\|'manual', manualProgress?` |
+| **Task** | `title, notes, projectId?, parentId?, areaId?, goalId?, milestoneId?, priority, status: 'todo'\|'doing'\|'done'\|'cancelled', dueDate?: LocalDate, dueTime?: LocalTime, scheduledAt?: Instant, estimateMin?, recurrence?, recurrenceOf?, reminders: Reminder[], tags: string[], completedAt?, order` |
+| **Goal** | `title, why: body, areaId?, targetDate?, status: 'active'\|'onHold'\|'achieved'\|'dropped', progressMode: 'milestones'\|'tasks'\|'manual', manualProgress?` |
 | **Milestone** | `goalId, title, dueDate?, doneAt?, order` |
 
 - **Completing a recurring task:**
@@ -103,7 +107,7 @@ a device-local `external_events` cache table with
 | Entity | data |
 |---|---|
 | **Habit** | `name, areaId?, icon, color, kind: 'boolean'\|'count'\|'duration', target? (e.g. 8 glasses), schedule: HabitSchedule, reminderTime?, startDate, archived` |
-| **HabitLog** | `habitId, date: LocalDate, value (1 for boolean), note?` |
+| **HabitLog** | `habitId, date: LocalDate, value (1 for boolean), note?, skip?: boolean` (a skip token) |
 | **Routine** | `name, kind: 'morning'\|'evening'\|'custom', steps: {id, title, habitId?, durationMin?, order}[], reminderTime?` |
 | **RoutineRun** | `routineId, date, completedStepIds: string[], startedAt?, finishedAt?` |
 | **WeeklyReview** | `weekStart: LocalDate, done: body, slipped: body, next: body, highlights?: body, statsSnapshot: json` |
@@ -209,8 +213,10 @@ replayed from them if two devices review the same card at the same time.
 
 ## 14. Settings
 
-- **Account settings** sync as a single `settings` record: language, calendar
-  system, week start, digits, base currency, theme preference, working hours,
-  energy profile, life-wheel areas, and AI privacy toggles.
+- **Account settings** sync as a single `settings` record (id `SETTINGS`):
+  `language, calendar, weekStart, digits, baseCurrency, tomanDisplay, theme,
+  timeZone, workingHours: {start, end, days}, energyProfile,
+  lifeWheelTargets: {areaId: weight}, aiAllowedModules[], dailyDigestTime?,
+  quietHours?`.
 - **Device settings** never sync: per-device reminder categories, the sync
   interval, connectors, and secrets.
