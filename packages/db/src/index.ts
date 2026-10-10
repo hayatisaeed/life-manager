@@ -9,7 +9,8 @@ export {
   type SqlExecutor,
   type SqlValue,
 } from './driver/types';
-export { openMemoryDriver } from './driver/wasm';
+// The in-memory driver (tests) is '@lm/db/memory', so the main thread of an
+// app doesn't bundle the sqlite-wasm loader; only the worker needs it.
 export { openWorkerDriver } from './driver/worker-client';
 export type { MessagePortLike } from './driver/worker-protocol';
 export { createTauriDriver, type TauriSqlDatabase } from './driver/tauri';
@@ -28,4 +29,5 @@ export {
   type RowProblem,
   type SearchHit,
 } from './repo/database';
-export { AttachmentCorruptError, AttachmentStore, type BlobRef } from './attachments';
+// AttachmentStore is imported from '@lm/db/attachments' so apps don't load
+// libsodium at startup just by opening the database.

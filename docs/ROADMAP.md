@@ -100,9 +100,9 @@ GitHub and on GitLab.
 - [ ] `packages/platform` interfaces + implementations (sql, http, secrets,
   notifications, files, audio, deep links)
 - [ ] `apps/web`, `apps/desktop` and `apps/mobile` boot the same UI
-- [ ] Design tokens, theme switcher (system/light/dark), fonts, base
+- [x] Design tokens, theme switcher (system/light/dark), fonts, base
   components, app layout (sidebar / bottom tabs)
-- [ ] i18n (en/fa), RTL switching, calendar-system and digits settings
+- [x] i18n (en/fa), RTL switching, calendar-system and digits settings
 - [ ] Onboarding wizard (SYNC.md §8): local-only, create a new repo, or join an
   existing repo; Settings → Sync page; sync status pill
 
