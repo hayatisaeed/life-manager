@@ -98,6 +98,9 @@ Dependencies only point downward:
   - Web: `@sqlite.org/sqlite-wasm` in a dedicated worker, on the
     `opfs-sahpool` VFS (no cross-origin isolation needed). One tab owns the
     database at a time, chosen with a Web Locks lock (ADR-011).
+    The driver raises `PRAGMA cache_size` (about 32 MiB). The default 2 MiB
+    cache makes full scans of a 30 MiB DB take seconds on OPFS
+    (spikes/README.md).
   - Desktop: `tauri-plugin-sql`.
   - Mobile: `@capacitor-community/sqlite`.
 - Two layers of tables:

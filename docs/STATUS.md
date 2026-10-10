@@ -11,8 +11,9 @@ short and current. Add new log entries at the top.
     envelope and zod entity schemas, then merge, then recurrence.
   - Done: sqlite-wasm OPFS (ADR-011). Partly done: Argon2id (desktop-class
     CPU only).
-  - Scripts ready but not run: GitHub and GitLab API spikes
-    (`spikes/forges/`). They need a throwaway repo and token.
+  - GitHub and GitLab API spikes (`spikes/forges/`): the unauthenticated CORS
+    preflights pass for every endpoint we need. The full scripts haven't been
+    run; they need a throwaway repo and token.
   - Not started: Tauri and Capacitor spikes (need macOS/Windows/Android).
 - **Next milestone:** finish P0.2 by running `spikes/forges/*.mjs` against
   scratch repos (owner or a local session with `LM_TEST_*` tokens). P0.3 Core
@@ -39,6 +40,18 @@ short and current. Add new log entries at the top.
   plugins. CI ran on the P0.1 PRs.
 
 ## Session log
+
+### 2026-10-10 — P0.2 Spikes (part 2): forge preflights, SQLite cache size
+- Ran unauthenticated CORS preflights against GitHub (GraphQL,
+  `git/trees`, `git/refs`) and GitLab (tree, commits, archive). All pass with
+  `Access-Control-Allow-Origin: *`, and GitLab exposes its pagination
+  headers. Added `spikes/forges/preflight.mjs`.
+- A second sqlite-wasm run on a 31 MiB DB showed the default 2 MiB page cache
+  makes full scans take 3.5–5 s, compared with about 50 ms at 32 MiB. The web
+  driver must set `cache_size` (noted for P0.5). About 20 ms per committed
+  transaction on `opfs-sahpool`.
+- Surprise: this session first re-did the whole P0.2 spike on a branch that
+  was stale, without the merged PR #4. Only the new findings were kept.
 
 ### 2026-10-09 — P0.3 Core primitives (part 1): ULID, HLC, order keys
 - `@lm/core` now exports `Clock`/`Rng` (injected), `createUlidGenerator` /

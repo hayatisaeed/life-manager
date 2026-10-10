@@ -12,6 +12,7 @@ PW_CHROMIUM_PATH=/path/to/chromium pnpm sqlite   # or omit PW_CHROMIUM_PATH if P
 PW_CHROMIUM_PATH=/path/to/chromium pnpm argon2
 LM_TEST_GITHUB_TOKEN=… LM_TEST_GITHUB_REPO=owner/scratch-repo pnpm github
 LM_TEST_GITLAB_TOKEN=… LM_TEST_GITLAB_PROJECT=group/scratch-repo pnpm gitlab
+pnpm preflight   # unauthenticated CORS preflights only; no token needed
 ```
 
 The forge spikes create a scratch branch `lm-spike-<random>` and delete it at
@@ -24,8 +25,8 @@ prints PASS/FAIL lines to stderr and a JSON summary to stdout.
 |---|---|---|
 | sqlite-wasm OPFS in a worker | ✅ run (headless Chromium 141, Linux) | Both VFSes work, FTS5 is compiled in; see below |
 | Argon2id timing | ⚠️ partly run (x86 Xeon, Node + Chromium) | 256 MiB works in browser wasm; Android not measured |
-| GitHub API from the browser | ⏳ script ready, not run | Needs a scratch repo and token |
-| GitLab API from the browser | ⏳ script ready, not run | Needs a scratch project and token |
+| GitHub API from the browser | ⚠️ preflights pass; full script not run | Needs a scratch repo and token |
+| GitLab API from the browser | ⚠️ preflights pass; full script not run | Needs a scratch project and token |
 | Tauri 2 plugins | ⏳ not run | Needs macOS and Windows machines (P0.7 scaffolds the app) |
 | Capacitor plugins | ⏳ not run | Needs the Android SDK and a device |
 
@@ -55,6 +56,17 @@ Findings:
   the sync engine already needs (SYNC.md §5).
 - The package README's `'opfs' in sqlite3` check is stale: the bootstrap
   deletes `sqlite3.opfs` after init. Check `sqlite3.oo1.OpfsDb` instead.
+- **Set `cache_size`.** A second run used a 31 MiB DB: a `WITHOUT ROWID`
+  `task` table with the ARCHITECTURE.md §4 sync columns and 30-word notes.
+  - With the default 2 MiB page cache, a full-scan `count(*)` took 3.4–3.6 s
+    on `opfs-sahpool` and 5.0 s on `opfs`.
+  - With `PRAGMA cache_size = -32000` (32 MiB) it took 41–65 ms.
+  - So the web driver must raise the cache. The 40 ms above came from a
+    smaller DB that fit in the default cache.
+- In that same run, one committed transaction (a row update plus a
+  `change_log` insert) cost about 20 ms on `opfs-sahpool` and about 40 ms on
+  `opfs`. `synchronous=NORMAL` saved only about 5%. User edits are fine; sync
+  must batch.
 - A 50k-row first import takes about 5 s, so the initial download needs a
   progress bar (already planned) and must write in batches.
 
@@ -82,6 +94,32 @@ Findings:
   owner question in docs/STATUS.md.
 - Still to do: run `argon2/index.html` on a mid-range Android phone (Chrome,
   and later the Capacitor WebView) and record the 64/128/256 MiB timings.
+
+### Forge CORS preflights (`forges/preflight.mjs`), run 2026-10-10
+
+These are unauthenticated `OPTIONS` requests from Node, with
+`Origin: https://app.example`, as a browser would send them. All six pass,
+and each response has `Access-Control-Allow-Origin: *`. Raw output is in
+`forges/preflight-result.jsonl`.
+
+| Request | Result |
+|---|---|
+| GitHub GraphQL `POST` | 204 ✅ |
+| GitHub `git/trees` `POST` | 204 ✅ |
+| GitHub `git/refs` `PATCH` | 204 ✅ |
+| GitLab `repository/tree` `GET` | 200 ✅ |
+| GitLab `repository/commits` `POST` | 200 ✅ |
+| GitLab `repository/archive.tar.gz` `GET` | 200 ✅ |
+
+- The GitHub requests sent `authorization` and `content-type`. GitHub also
+  allows `If-Match` and `If-None-Match`.
+- The GitLab requests sent `private-token` and `content-type`. GitLab exposes
+  `Link`, `X-Next-Page`, `X-Total-Pages` and `X-Gitlab-Last-Commit-Id` to
+  browsers.
+
+A passing preflight is necessary but not sufficient. It doesn't show that the
+real responses carry CORS headers, especially GitLab's archive redirect. So
+the authenticated scripts below are still needed.
 
 ### GitHub (`forges/github.mjs`)
 
