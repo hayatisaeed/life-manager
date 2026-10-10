@@ -7,8 +7,9 @@ short and current. Add new log entries at the top.
 
 - **Phase:** 0 (foundations). P0.1 is done; **P0.2 Spikes and P0.3 Core
   primitives are in progress.**
-  - P0.3: ULID, HLC and fractional indexing are done (ADR-012). Next: the
-    envelope and zod entity schemas, then merge, then recurrence.
+  - P0.3: ULID, HLC and fractional indexing are done (ADR-012), and so are the
+    envelope, the zod schemas for all 46 entity types, and the upgrader framework
+    (ADR-013). Next: the merge function, then recurrence.
   - Done: sqlite-wasm OPFS (ADR-011). Partly done: Argon2id (desktop-class
     CPU only).
   - GitHub and GitLab API spikes (`spikes/forges/`): the unauthenticated CORS
@@ -17,7 +18,7 @@ short and current. Add new log entries at the top.
   - Not started: Tauri and Capacitor spikes (need macOS/Windows/Android).
 - **Next milestone:** finish P0.2 by running `spikes/forges/*.mjs` against
   scratch repos (owner or a local session with `LM_TEST_*` tokens). P0.3 Core
-  primitives continues in parallel (next task: envelope + entity schemas).
+  primitives continues in parallel (next task: the merge function, SYNC.md §6).
 - **Blockers / needs owner input:**
   - **Argon2id parameters (security, data format).** SECURITY.md §2 says
     256 MiB on desktop and 64 MiB on mobile/web, but `lm.json` holds one `kdf`
@@ -40,6 +41,27 @@ short and current. Add new log entries at the top.
   plugins. CI ran on the P0.1 PRs.
 
 ## Session log
+
+### 2026-10-10 — P0.3 Core primitives (part 2): envelope and entity schemas
+- `@lm/core` now has zod schemas for all 45 entities in DATA-MODEL.md plus
+  `settings`, grouped by section in `entities/modules/`, and the shared value
+  types in `entities/primitives.ts`.
+- Each entity declares its version, upgraders and merge kinds
+  (`text`/`set`/`list`). `decodeRecord` validates, upgrades and returns
+  either `ok` or `kept` with a reason; it never throws or drops data.
+  `parseEntityData` is the throwing variant for local writes.
+- Tests:
+  - A fixture for every entity (the compiler enforces completeness).
+  - A check that the registry matches DATA-MODEL.md's tables.
+  - Upgrade-chain tests with a fake v3 entity.
+  - Property tests that no key is ever lost and that parsing is idempotent.
+  - Core stays at 100% coverage.
+- Filled spec gaps (Goal status, settings fields, BlobRef, tag ids, and
+  others) are recorded in ADR-013 and DATA-MODEL.md. SYNC.md §3 gained
+  `createdAt` and the decode rules.
+- Surprise: a fast-check run found that a data key named `__proto__` was
+  silently dropped by plain assignment, `z.record` and zod loose objects.
+  Free-form maps are now passed through untouched.
 
 ### 2026-10-10 — P0.2 Spikes (part 2): forge preflights, SQLite cache size
 - Ran unauthenticated CORS preflights against GitHub (GraphQL,

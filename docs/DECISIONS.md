@@ -162,3 +162,53 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
     between two equal keys requires re-spacing with `ordersBetween`.
 - **Consequences:** These strings are part of the encrypted record format, so
   changing any of them later needs a schema upgrader.
+
+### ADR-013 — Record envelope, entity schemas and upgrades
+2026-10-10 · accepted
+
+- **Context:** P0.3 turns DATA-MODEL.md into zod schemas. The spec left some
+  formats and enum values open, and nothing yet said how a client treats a
+  record it can't read.
+- **Decision:**
+  - **Envelope:** `{ id, type, schema, hlc, fieldHlc, deletedAt, createdAt,
+    data }`. `createdAt` was missing from SYNC.md's example.
+  - The envelope is a loose object: unknown top-level keys are carried along.
+  - **Decoding:** `decodeRecord` never throws. A record that is malformed, of
+    an unknown type, on a newer schema, failing an upgrader, or holding
+    invalid data is returned as `kept` with the raw value, for the engine to
+    store untouched.
+  - **Unknown data fields:** they move into `data._unknown` before
+    validation. Nested objects are strict, so an unknown key inside one makes
+    the record `kept`, not silently stripped.
+  - Free-form maps (`data`, `_unknown`, `fieldHlc`) are checked as plain
+    objects and passed through as is. `z.record` and zod's loose objects drop
+    a `__proto__` key, and a property test found that. The decoded record is
+    built from the raw object for the same reason.
+  - **Upgrades:** each entity has a `version` and an `upgraders` list
+    (`upgraders[i]` turns `i + 1` into `i + 2`). Upgraders map
+    `{data, fieldHlc}`, so renames carry their HLCs.
+  - **Merge kinds** are declared per entity: `text`, `set` and `list`, with
+    scalars as the default. The merge doesn't infer them from field names,
+    because long text fields such as `why` and `rationale` don't follow the
+    `body`/`notes`/`content` naming.
+  - **Optional fields** are left out of the record, never null. The schemas
+    apply no defaults.
+  - **Formats:**
+    - `Instant` is the exact `toISOString` form.
+    - `BlobRef` is `{hash (hex BLAKE2b-256 of the plaintext), size, mime,
+      name?}`.
+    - Colors are palette names.
+    - `tags` hold Tag ids.
+  - **Filled gaps:**
+    - Goal `status` is `active|onHold|done|dropped`.
+    - Goal `manualProgress` is an integer percent.
+    - `Task.recurrenceOf` exists.
+    - Plan-proposal blocks carry the id their TimeBlock will get.
+    - The `settings` record has a fixed id, `SETTINGS_ID` (26 zeros), and the
+      fields listed in DATA-MODEL.md §14.
+- **Consequences:**
+  - Every type name, enum value and format above is part of the encrypted
+    record format. Changing one needs a schema bump and an upgrader.
+  - No real data exists yet, so the filled gaps can still be changed freely
+    before the first release.
+

@@ -55,7 +55,7 @@ ADR and reflected in SYNC.md.
 ### P0.3 Core primitives (`packages/core`)
 - [x] ULID, HLC (with tests for monotonicity and remote receive), fractional
   indexing
-- [ ] Envelope + zod entity schemas for **all** entities in DATA-MODEL.md, with
+- [x] Envelope + zod entity schemas for **all** entities in DATA-MODEL.md, with
   schema versions and the upgrader framework
 - [ ] The merge function (SYNC.md §6) with property tests for commutativity,
   idempotence and convergence

@@ -4,34 +4,71 @@ These are the canonical entity definitions. The zod schemas in
 `packages/core/src/entities/` are the source of truth in code and must match
 this document. If you change one, change the other in the same PR.
 
+- Schemas are grouped by section in `entities/modules/<section>.ts`.
+- They are registered under their envelope `type` in `entities/registry.ts`.
+- Type names are the entity names in lower camelCase (`inboxItem`). They are
+  part of the record format, so never rename one.
+- A test checks that the registry lists exactly the entities in the tables
+  below.
+
 ## 1. Conventions
 
-- **Every entity** carries the sync envelope fields:
+- **Every entity** carries the sync envelope fields (SYNC.md §3):
   - `id`: a ULID.
   - `type`, `schema`, `hlc`, `fieldHlc`.
-  - `deletedAt`: an ISO timestamp, or null.
-  - `createdAt`.
+  - `deletedAt`: an `Instant`, or null.
+  - `createdAt`: an `Instant`.
   - Only `data` is listed below.
+- **Optional fields** (`field?`) are left out when empty. They are never
+  `undefined` or `null`.
+- **Defaults** (such as `alertAtPct` 80) are applied by the UI when a record
+  is created, not by the schema. A stored record always has every required
+  field.
 - **Dates and times:**
   - A date with no time is `LocalDate` (`YYYY-MM-DD`, always in the Gregorian
     proleptic calendar). Jalali is only a display and recurrence concern.
-  - A moment in time is `Instant` (ISO UTC).
+  - A moment in time is `Instant`: UTC with milliseconds, exactly as
+    `Date#toISOString` writes it (`2026-10-09T10:15:00.000Z`). Every field
+    ending in `At` is an `Instant`.
   - A time of day is `LocalTime` (`HH:mm`).
   - Time zones are IANA names.
 - **Money:** `Money = { amount: integer minor units, currency: ISO4217 }`.
+- **Attachments:**
+  `BlobRef = { hash, size, mime, name? }`.
+  - `hash` is the lowercase hex BLAKE2b-256 of the plaintext.
+  - That hash is the blob's associated data and its path input (SYNC.md §1).
+- **Colors and icons:**
+  - `color` is the name of one of the fixed palette hues in DESIGN.md. It is
+    never a raw color value.
+  - `icon` is a lucide icon name.
+- **Tags:** `tags` fields hold **Tag ids**, not names, so renaming a tag
+  touches one record.
 - **References** are ids (`Ref<Task>`). Cross-module relationships use the
   generic **Link** entity rather than foreign keys, so any entity can link to
   any other.
 - **Ordering** uses fractional-index strings (`order: string`). Lists sort by
   `(order, id)` with plain code-unit comparison, so two items that got the same
   key on different devices still sort identically everywhere (ADR-012).
-- **Long text fields** (merged with diff3, see SYNC.md §6) are named `body`,
-  `notes` or `content`. Use these names only for long text.
+- **Merge kinds:** each entity declares how the merge treats its non-scalar
+  fields (`merge` in its definition):
+  - `text`: long text, merged with diff3 (SYNC.md §6).
+  - `set`: arrays of ids or values.
+  - `list`: ordered arrays of objects with `id` and `order`.
+  - Undeclared fields are scalars.
+- **Long text names:** fields named `body`, `notes` or `content` are always
+  `text`, and a test enforces this. Other long text fields, the ones marked
+  `body` in the tables (`why`, `done`, `rationale`, …), are declared
+  explicitly.
 - **Schema evolution:**
-  - Bump the entity's `schema` number and add an upgrader in
-    `core/src/entities/<entity>/upgrade.ts`.
+  - Bump the entity's `version` and append an upgrader to its `upgraders` list.
+    `upgraders[i]` turns schema `i + 1` into `i + 2`.
   - Upgraders must be pure and must not drop fields they don't recognize. Keep
     them under `data._unknown`.
+  - An upgrader that renames a field also renames its `fieldHlc` key.
+  - Decoding moves any field the schema doesn't define into `_unknown`, so
+    validation never strips data.
+  - Nested objects are strict: an unknown key inside one makes the record
+    `invalidData`, and the raw record is kept (SYNC.md §3).
 
 ## 2. Shared types
 
@@ -72,8 +109,8 @@ synced.
 |---|---|
 | **InboxItem** | `text, audioBlob?: BlobRef, transcript?, transcriptStatus: 'none'\|'pending'\|'done'\|'failed', source: 'quick'\|'share'\|'voice'\|'import', processedAt?` |
 | **Project** | `name, areaId?, status: 'active'\|'onHold'\|'done'\|'archived', notes, color?, order` |
-| **Task** | `title, notes, projectId?, parentId?, areaId?, goalId?, milestoneId?, priority, status: 'todo'\|'doing'\|'done'\|'cancelled', dueDate?: LocalDate, dueTime?: LocalTime, scheduledAt?: Instant, estimateMin?, recurrence?, reminders: Reminder[], tags: string[], completedAt?, order` |
-| **Goal** | `title, why: body, areaId?, targetDate?, status, progressMode: 'milestones'\|'tasks'\|'manual', manualProgress?` |
+| **Task** | `title, notes, projectId?, parentId?, areaId?, goalId?, milestoneId?, priority, status: 'todo'\|'doing'\|'done'\|'cancelled', dueDate?: LocalDate, dueTime?: LocalTime (needs dueDate), scheduledAt?: Instant, estimateMin?, recurrence?, recurrenceOf?: Ref<Task>, reminders: Reminder[], tags: Ref<Tag>[], completedAt?, order` |
+| **Goal** | `title, why: body, areaId?, targetDate?: LocalDate, status: 'active'\|'onHold'\|'done'\|'dropped', progressMode: 'milestones'\|'tasks'\|'manual', manualProgress?: 0–100 (percent)` |
 | **Milestone** | `goalId, title, dueDate?, doneAt?, order` |
 
 - **Completing a recurring task:**
@@ -206,13 +243,26 @@ replayed from them if two devices review the same card at the same time.
 
 | Entity | data |
 |---|---|
-| **PlanProposal** | `range: {start,end}, blocks: Omit<TimeBlock,'proposalId'>[], rationale: body, provider, status: 'pending'\|'accepted'\|'discarded', acceptedBlockIds` |
+| **PlanProposal** | `range: {start,end}, blocks: ({id} & Omit<TimeBlock,'proposalId'>)[], rationale: body, provider, status: 'pending'\|'accepted'\|'discarded', acceptedBlockIds` |
 | **Insight** | `period: {start,end}, kind: 'weekly'\|'correlation'\|'wheel', payload: json, narrative?: body` |
+
+- A proposed block's `id` becomes the id of the TimeBlock created when the
+  user accepts it. `acceptedBlockIds` lists those ids.
 
 ## 14. Settings
 
-- **Account settings** sync as a single `settings` record: language, calendar
-  system, week start, digits, base currency, theme preference, working hours,
-  energy profile, life-wheel areas, and AI privacy toggles.
+- **Account settings** sync as a single `settings` record. It always has the
+  id `00000000000000000000000000` (`SETTINGS_ID`), so two devices that create
+  it offline produce one record that merges, not two. Its data:
+
+  ```ts
+  { language: 'en'|'fa', calendar: CalendarSystem, weekStart: 0–6,
+    digits: 'latin'|'native', baseCurrency: ISO4217,
+    theme: 'system'|'light'|'dark',
+    workingHours: {weekday, start: LocalTime, end: LocalTime}[],
+    energyProfile: {start, end, level: 'low'|'medium'|'high'}[],
+    lifeWheelAreaIds: Ref<Area>[],
+    ai: { excludedModules: string[] } }    // "never send" modules (ARCHITECTURE.md §11)
+  ```
 - **Device settings** never sync: per-device reminder categories, the sync
   interval, connectors, and secrets.
