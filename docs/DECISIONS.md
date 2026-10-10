@@ -164,3 +164,34 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
     extra security).
 - **Consequences:** SYNC.md §3 and SECURITY.md §2 are updated. The format is
   fixed from the first release, so no migration is needed.
+
+### ADR-013 — Sync engine implementation details
+2026-10-10 · accepted
+
+- **Context:** Implementing SYNC.md §5–§7 surfaced details the spec left open.
+- **Decision:**
+  - **GitLab reads** go through `GET /repository/files/:path/raw?ref=<head>`
+    (not the blob endpoint), because its `X-Gitlab-Last-Commit-Id` header gives
+    the per-file `last_commit_id` needed for CAS in the same request. The id is
+    stored per path in `sync_remote.meta`; commits return the new id for the
+    files they wrote.
+  - **After a CAS conflict** the engine re-reads the files it tried to write
+    (even if their blob SHA looks unchanged), so stale GitLab
+    `last_commit_id`s (e.g. after compaction) refresh with matching content.
+  - **Interleaved GitLab commits:** if a commit's first parent isn't the head
+    we built on, `lastSyncedCommit` stays at that head so the next cycle walks
+    the tree and picks up the other commits.
+  - **Tree SHAs** of directories touched by our own push are dropped from the
+    snapshot rather than recomputed; the next walk re-lists only those.
+  - **Listing strategy:** recursive listing for the first sync (both forges)
+    and on GitHub below 50k known entries; Merkle walk otherwise and whenever
+    GitHub truncates.
+  - **Onboarding:** a repo holding only starter files (`README`, `LICENSE`,
+    `.gitignore`, `.gitattributes`) counts as empty, since both forges offer to
+    create them. On GitHub the very first commit uses the contents API because
+    the git-data API rejects empty repos.
+  - Undecryptable files are recorded in `sync_problems` with their SHA and
+    are not re-fetched every cycle; "Retry" (Settings → Sync → Problems)
+    forces a re-read.
+- **Consequences:** SYNC.md §5, §7 and §8 are updated. The fake forge
+  implements both CAS styles, and the convergence simulator runs against both.

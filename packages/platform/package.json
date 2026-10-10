@@ -5,10 +5,17 @@
   "description": "Platform adapter interfaces and web/Tauri/Capacitor implementations.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./web": "./src/web/index.ts",
+    "./tauri": "./src/tauri/index.ts",
+    "./capacitor": "./src/capacitor/index.ts",
+    "./memory": "./src/memory/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.53.4-build2"
   }
 }

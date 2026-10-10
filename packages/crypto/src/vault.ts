@@ -67,8 +67,9 @@ export function createVault(
   passphrase: string,
   cost: { opslimit: number; memlimit: number },
   createdAt: string,
+  existingDataKey?: Uint8Array,
 ): NewVault {
-  const dataKey = randomBytes(KEY_BYTES);
+  const dataKey = existingDataKey ?? randomBytes(KEY_BYTES);
   const recovery = newRecoveryKeyBytes();
   const kdf = newKdfParams(cost);
   const kek = deriveKek(passphrase, kdf);

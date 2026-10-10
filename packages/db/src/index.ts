@@ -1,3 +1,6 @@
-// SQLite schema, migrations, repositories, live queries.
-// Implementation starts in Phase 0; see docs/ROADMAP.md.
-export {};
+// SQLite schema, migrations, repositories, live queries, FTS5, attachments.
+
+export * from './migrations';
+export * from './store';
+export * from './sync-state';
+export * from './blobs';

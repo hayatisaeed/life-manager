@@ -74,23 +74,23 @@ rejected.
 
 ### P0.5 Local DB (`packages/db`)
 - [ ] `SqlDriver` interface + web, Tauri and Capacitor drivers
-- [ ] Migrations runner; tables for all entities; sync bookkeeping tables
-- [ ] Repository API (CRUD that stamps the HLC and writes the change log),
+- [x] Migrations runner; tables for all entities; sync bookkeeping tables
+- [x] Repository API (CRUD that stamps the HLC and writes the change log),
   live queries, FTS5 search
-- [ ] Encrypted attachment store
+- [x] Encrypted attachment store
 
 **AC:** The same repository test suite passes against the web driver in CI;
 desktop and mobile drivers are checked manually.
 
 ### P0.6 Sync engine (`packages/sync`)
-- [ ] `SyncTransport` interface + fake forge
-- [ ] Sync cycle (SYNC.md §5), Merkle diff, batching, backoff, rate-limit
+- [x] `SyncTransport` interface + fake forge
+- [x] Sync cycle (SYNC.md §5), Merkle diff, batching, backoff, rate-limit
   tracking, lock
-- [ ] GitHub transport; GitLab transport
-- [ ] **Convergence simulator:** 5 devices × 1,000 random operations, random
+- [x] GitHub transport; GitLab transport
+- [x] **Convergence simulator:** 5 devices × 1,000 random operations, random
   sync order, must reach identical state. Runs in CI (short) and nightly
   (long).
-- [ ] Opt-in contract tests against real repos (`LM_TEST_GITHUB_*`,
+- [x] Opt-in contract tests against real repos (`LM_TEST_GITHUB_*`,
   `LM_TEST_GITLAB_*` env vars)
 
 **AC:** The simulator passes 1,000 seeds. A real two-device sync works on

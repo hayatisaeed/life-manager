@@ -55,7 +55,9 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
 - `lm.json` is created once, when the first device initializes an empty repo.
 - If it already exists, a joining device unlocks it with the passphrase or the
   recovery key.
-- If the repo is not empty and has no `lm.json`, the app refuses to use it.
+- If the repo is not empty and has no `lm.json`, the app refuses to use it. A
+  repo holding only starter files (`README`, `LICENSE`, `.gitignore`,
+  `.gitattributes`) counts as empty (ADR-013).
 
 ## 3. Record envelope (the plaintext inside `.lmr`)
 
@@ -115,7 +117,8 @@ stay a plain linear history.
      newHead ← transport.commit(parent = head, files)    // CAS on branch
        on conflict → go to 1 (exponential backoff, max 5 tries per cycle)
      sync_base[id] ← pushed envelope; clear change_log entries that were pushed
-     update sync_remote with the new blob SHAs (computed locally: git blob SHA-1)
+     update sync_remote with the new blob SHAs (computed locally: git blob SHA-1);
+     forget the tree SHAs of directories we wrote to (re-listed on the next walk)
 4. lastSyncedCommit ← newHead or head
 ```
 
@@ -195,12 +198,11 @@ interface SyncTransport {
 - **Head:** `GET /projects/:id/repository/branches/:branch`.
 - **Trees:** `GET /projects/:id/repository/tree?path=&ref=&per_page=100`, with
   keyset pagination. Entries carry `id`, which is the object SHA.
-- **Blob reads:**
-  - `GET /projects/:id/repository/blobs/:sha/raw`, with bounded concurrency
-    (6).
-  - For a first sync, try the archive endpoint
-    (`/repository/archive.tar.gz?sha=`) first. **This needs a spike** to check
-    CORS and size behavior.
+- **File reads:** `GET /projects/:id/repository/files/:path/raw?ref=<head>`,
+  with bounded concurrency (6). The response's `X-Gitlab-Last-Commit-Id`
+  header (exposed over CORS, P0.2 spike) supplies the per-file
+  `last_commit_id` used for CAS (ADR-013). The archive endpoint is
+  CORS-enabled and remains an option for faster first syncs.
 - **Commit:** `POST /projects/:id/repository/commits` with `branch`,
   `start_sha` set to the parent commit, and `actions[]` (create, update, delete;
   `encoding: base64` for binary).
@@ -215,7 +217,12 @@ interface SyncTransport {
   - `last_commit_id` per path comes from the commit response for files we
     pushed, and from the `X-Gitlab-Last-Commit-Id` header when we read a file
     through the files API.
-  - **This needs a spike to verify.**
+  - After a conflict the engine re-reads the files it tried to write, so a
+    stale `last_commit_id` refreshes together with matching content.
+  - If a commit's first parent isn't the head we built on, other commits
+    landed in between; `lastSyncedCommit` stays at the old head so the next
+    cycle picks them up (ADR-013). The real-forge contract tests
+    (`LM_TEST_GITLAB_*`) must confirm the documented error messages.
 - **Token:** a project access token (Developer role) or a PAT with the `api`
   scope. GitLab's REST writes need `api`.
 
