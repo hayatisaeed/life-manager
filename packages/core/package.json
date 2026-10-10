@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "fractional-indexing": "4.0.0",
+    "jalaali-js": "2.0.1",
     "node-diff3": "3.2.1",
     "ulid": "3.0.2",
     "zod": "4.6.5"

@@ -93,6 +93,32 @@ interface Recurrence {                            // subset of RFC 5545 + calend
 interface Reminder { offsetMinutes: number; channel: 'notify'; }   // relative to the due/start time
 ```
 
+**Recurrence semantics.** These are implemented in `core/src/recurrence/`
+(ADR-015).
+
+- Periods (week, month, year) are in the rule's `calendar`, so a Jalali
+  "monthly" rule follows Jalali months.
+- **Defaults come from the start date, as in RFC 5545:**
+  - weekly repeats on the start's weekday;
+  - monthly on its day;
+  - yearly on its month and day.
+- **Month days that a month lacks are clamped** to its last day, unlike RFC
+  5545, which skips them. "Monthly on the 31st" falls on Feb 28/29 and on
+  30 Mehr.
+- Negative month days count from the end; `-1` is the last day.
+- `bySetPos` picks positions within each period ("2nd Tuesday",
+  "last Friday").
+- **Weeks start on the user's `weekStart` setting.** Only weekly rules with
+  `interval > 1` depend on it.
+- **`fixed` mode:** the series is anchored at the start date, and `count`
+  counts from there.
+- **`afterCompletion` mode:** the next date is the completion date plus
+  `interval` periods, then the first day from there that matches the rule's
+  filters.
+- A series that produces nothing for a very long span is treated as ended.
+  The span is about 11 years for daily rules, 19 for weekly, 83 for monthly
+  and 400 for yearly. Only an impossible rule gets there.
+
 ## 3. Structure
 
 | Entity | data |
@@ -119,7 +145,13 @@ synced.
   1. Mark the current instance done.
   2. Create the next instance as a **new Task**, copying fields and setting
      `recurrenceOf` to the original's id.
-  3. Move the `recurrence` rule to the new task.
+  3. Move the `recurrence` rule to the new task. `nextInstance` computes both
+     the new due date and the rule to store:
+     - `count` becomes the number of instances left, including the new one.
+     - A `fixed` rule gets the defaults it took from its first start date
+       written out, so "the 31st" doesn't drift to "the 28th" after February.
+     - In `fixed` mode the next date is the first occurrence after the
+       current due date. Missed occurrences aren't skipped.
 
   This keeps history immutable and avoids merge conflicts on one ever-changing
   row.

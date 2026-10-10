@@ -59,7 +59,7 @@ ADR and reflected in SYNC.md.
   schema versions and the upgrader framework
 - [x] The merge function (SYNC.md §6) with property tests for commutativity,
   idempotence and convergence
-- [ ] Recurrence engine (Gregorian and Jalali, `fixed` and `afterCompletion`
+- [x] Recurrence engine (Gregorian and Jalali, `fixed` and `afterCompletion`
   modes)
 
 **AC:** 100% branch coverage on merge, HLC and recurrence.

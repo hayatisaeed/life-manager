@@ -26,7 +26,7 @@ this list needs an entry in [DECISIONS.md](DECISIONS.md).
 | Markdown editor | CodeMirror 6 (markdown mode, live preview decorations) | stores plain Markdown |
 | Markdown render | remark/rehype + DOMPurify | |
 | Validation / schemas | zod | |
-| Dates | date-fns + date-fns-jalali, @internationalized/date for time zones | |
+| Dates | date-fns + date-fns-jalali, @internationalized/date for time zones | `core` recurrence uses `jalaali-js` (pure Julian-day-number conversions, no `Date`), ADR-015 |
 | i18n | i18next + react-i18next | |
 | IDs / clocks | `ulid`, own HLC implementation in `core` | ULID entropy and HLC time come from the injected `Rng` and `Clock` |
 | Order keys | `fractional-indexing` | base-62 keys, compared by code unit (ADR-012) |

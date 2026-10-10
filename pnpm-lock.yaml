@@ -117,6 +117,9 @@ importers:
       fractional-indexing:
         specifier: 4.0.0
         version: 4.0.0
+      jalaali-js:
+        specifier: 2.0.1
+        version: 2.0.1
       node-diff3:
         specifier: 3.2.1
         version: 3.2.1
@@ -2265,6 +2268,10 @@ packages:
   iterator.prototype@1.1.5:
     resolution: {integrity: sha512-H0dkQoCa3b2VEeKQBOxFph+JAbcrQdE7KC0UkqwpLmv2EC4P41QXP+rqo9wYodACiG5/WM5s9oDApTU8utwj9g==}
     engines: {node: '>= 0.4'}
+
+  jalaali-js@2.0.1:
+    resolution: {integrity: sha512-qzTmjw6lZ3V4znyNA8ceYoGgFR+CcF+xEfIYZNcK2ZR0mzdMpMZ6iAcdRPvMgxUVdPMh6QLWCANpTcCJow2U+Q==}
+    engines: {node: '>=20'}
 
   js-tokens@10.0.0:
     resolution: {integrity: sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q==}
@@ -5728,6 +5735,8 @@ snapshots:
       get-proto: 1.0.1
       has-symbols: 1.1.0
       set-function-name: 2.0.2
+
+  jalaali-js@2.0.1: {}
 
   js-tokens@10.0.0: {}
 
