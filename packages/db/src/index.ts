@@ -21,6 +21,8 @@ export {
   RecordNotFoundError,
   type ChangeLogEntry,
   type DatabaseOptions,
+  type KeptFile,
+  type SyncTx,
   type ListOptions,
   type Patch,
   type RowProblem,

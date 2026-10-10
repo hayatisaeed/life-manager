@@ -7,6 +7,8 @@ import {
   deriveSubKeys,
   encryptBlob,
   encryptRecord,
+  recordFileName,
+  recordNameFromPath,
   recordPath,
   type SubKeys,
 } from './codecs';
@@ -21,34 +23,52 @@ const keys: SubKeys = deriveSubKeys(asKey(Uint8Array.from({ length: 32 }, (_, i)
 const ID = '01J9ZZZZZZZZZZZZZZZZZZZZZZ';
 
 describe('.lmr records', () => {
-  it('decrypts a pinned record file (known answer)', () => {
+  const PATH = recordPath(keys, ID);
+
+  it('decrypts a pinned record file (known answer, ADR-019 format)', () => {
     const file =
-      'LMR1.QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXudyyblqxK1_MEMmFfJKoXybpWE9k1ycsOvZxL9lUT_9Z028-wJ8ASY-gvUu05ewVp7AT';
-    expect(fromUtf8(decryptRecord(keys, ID, file))).toBe(`{"id":"${ID}"}`);
+      'LMR1.QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXudyyblqxK1_MEMmFfJKoXybpWE9k1ycsOvZxL9lUT_9Z02_OHyGy-1d95NhKflM2W7AN';
+    expect(fromUtf8(decryptRecord(keys, PATH, file))).toBe(`{"id":"${ID}"}`);
   });
 
-  it('round-trips as ASCII text', () => {
+  it('round-trips as ASCII text, decrypted by path alone', () => {
     const file = encryptRecord(keys, ID, utf8('{"title":"Call mom"}'));
     expect(file).toMatch(/^LMR1\.[A-Za-z0-9_-]+$/);
-    expect(fromUtf8(decryptRecord(keys, ID, file))).toBe('{"title":"Call mom"}');
+    expect(fromUtf8(decryptRecord(keys, PATH, file))).toBe('{"title":"Call mom"}');
+    expect(recordNameFromPath(PATH)).toBe(recordFileName(keys, ID));
   });
 
   it('rejects a relocated, tampered, truncated or foreign file', () => {
     const file = encryptRecord(keys, ID, utf8('secret'));
     const authFailed = expect.objectContaining({ code: 'auth-failed' });
-    expect(() => decryptRecord(keys, '01J9ZZZZZZZZZZZZZZZZZZZZZY', file)).toThrow(authFailed);
+    expect(() => decryptRecord(keys, recordPath(keys, '01J9ZZZZZZZZZZZZZZZZZZZZZY'), file)).toThrow(
+      authFailed,
+    );
     const i = 20;
     const flipped = file.slice(0, i) + (file[i] === 'A' ? 'B' : 'A') + file.slice(i + 1);
-    expect(() => decryptRecord(keys, ID, flipped)).toThrow(authFailed);
+    expect(() => decryptRecord(keys, PATH, flipped)).toThrow(authFailed);
     // Truncation breaks either the base64 or the tag; both are rejections.
-    expect(() => decryptRecord(keys, ID, file.slice(0, -4))).toThrow(LmCryptoError);
-    expect(() => decryptRecord(keys, ID, file.slice(0, -3))).toThrow(LmCryptoError);
-    expect(() => decryptRecord(keys, ID, 'LMR1.AAAA')).toThrow(
+    expect(() => decryptRecord(keys, PATH, file.slice(0, -4))).toThrow(LmCryptoError);
+    expect(() => decryptRecord(keys, PATH, file.slice(0, -3))).toThrow(LmCryptoError);
+    expect(() => decryptRecord(keys, PATH, 'LMR1.AAAA')).toThrow(
       expect.objectContaining({ code: 'malformed' }),
     );
-    expect(() => decryptRecord(keys, ID, file.replace('LMR1.', 'LMR2.'))).toThrow(/not an LMR1/);
+    expect(() => decryptRecord(keys, PATH, file.replace('LMR1.', 'LMR2.'))).toThrow(/not an LMR1/);
     const otherRepo = deriveSubKeys(randomKey() as DataKey);
-    expect(() => decryptRecord(otherRepo, ID, file)).toThrow(authFailed);
+    expect(() => decryptRecord(otherRepo, PATH, file)).toThrow(authFailed);
+  });
+
+  it('rejects paths that are not record paths', () => {
+    const name = recordFileName(keys, ID);
+    for (const bad of [
+      `r/00/00/${name}.lmr`, // shards don't match the name
+      `b/${name.slice(0, 2)}/${name.slice(2, 4)}/${name}.lmr`,
+      `r/${name.slice(0, 2)}/${name.slice(2, 4)}/${name}.lmb`,
+      `r/${name.slice(0, 2)}/${name.slice(2, 4)}/${name.toUpperCase()}.lmr`,
+      'lm.json',
+    ]) {
+      expect(() => recordNameFromPath(bad)).toThrow(/not a record path/);
+    }
   });
 });
 
@@ -59,7 +79,8 @@ describe('.lmb blobs', () => {
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
     const file = encryptBlob(keys, hash, data);
     expect(fromUtf8(file.subarray(0, 4))).toBe('LMB1');
-    expect(decryptBlob(keys, hash, file)).toEqual(data);
+    // Compared as hex: Vitest's deep equality on a 100 KB array takes seconds.
+    expect(toHex(decryptBlob(keys, hash, file))).toBe(toHex(data));
   });
 
   it('rejects a relocated, tampered, truncated or non-LMB1 file', () => {

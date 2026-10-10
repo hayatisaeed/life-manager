@@ -32,7 +32,9 @@ implement our own primitives.
 
 **Associated data:**
 
-- Records: `"lmr1|" + recordId`.
+- Records: `"lmr1|" + fileName`, the hex keyed hash that names the file
+  (ADR-019). After decrypting, the engine checks that the record's id hashes
+  to that name.
 - Blobs: `"lmb1|" + contentHash`, where `contentHash` is hex BLAKE2b-256 of
   the plaintext.
 - Wrapped keys: `"lmk1|" + kind`.

@@ -90,8 +90,14 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
 - **Unknown top-level keys are carried along.** The envelope is a loose
   object, so keys added by a newer client survive a round-trip.
 
-- The AEAD associated data is `"lmr1|" + id`. A file moved to another record's
-  path therefore fails to decrypt, and the engine skips it and logs an error.
+- The AEAD associated data is `"lmr1|" + name`, where `name` is the file name:
+  the keyed hash of the id (§1, ADR-019). A device that has never seen a
+  record knows its name but not its id, so the id can't be the AD.
+  - After decrypting, the engine checks that the id inside hashes to the same
+    path.
+  - So a file moved to another path fails to decrypt, and a file whose content
+    belongs elsewhere fails the check. Either way it is kept and reported,
+    never applied (§10).
 - **HLC format:** `ISO-millis-counter(4 hex)-deviceId`. These strings sort
   lexicographically in time order. Each device keeps one HLC; it is advanced on
   every local write and on receiving a remote HLC.
@@ -122,8 +128,9 @@ stay a plain linear history.
 2. if head ≠ lastSyncedCommit:
      changed ← diffTrees(lastSyncedCommit snapshot in sync_remote, head)   // Merkle walk
      blobs   ← transport.readBlobs(changed)                                // batched
-     for each changed path:
-        theirs ← decrypt(blob)              (skip + report if it fails)
+     for each changed path (one DB transaction per batch):
+        theirs ← decrypt(blob), check id ↔ path, decode
+                                            (keep in sync_kept + report if any step fails)
         ours   ← local record (or none)
         base   ← sync_base[id] (or none)
         if id ∉ change_log: apply(theirs);                  sync_base[id] ← theirs
@@ -136,9 +143,22 @@ stay a plain linear history.
      newHead ← transport.commit(parent = head, files)    // CAS on branch
        on conflict → go to 1 (exponential backoff, max 5 tries per cycle)
      sync_base[id] ← pushed envelope; clear change_log entries that were pushed
-     update sync_remote with the new blob SHAs (computed locally: git blob SHA-1)
+       (only if their HLC is unchanged: an edit made during the push stays queued)
+     update sync_remote with the new blob SHAs (computed locally: git blob SHA-1),
+       and forget the SHAs of the directories above them
+     more than one commit's worth (500 files)? → go to 3 again
 4. lastSyncedCommit ← newHead or head
 ```
+
+**Implementation notes** (`SyncEngine` in `@lm/sync`, ADR-020):
+
+- Reading "ours", merging and writing happen in one database transaction
+  (`LmDatabase.syncTransaction`), so a local edit can't slip in between.
+- After a push the engine doesn't know the new directory SHAs. It drops them
+  from `sync_remote`, so the next walk lists those directories and finds the
+  pushed blobs already known by SHA: nothing is re-downloaded.
+- A cycle is skipped, with `rateLimited`, when the forge reports fewer than 50
+  requests left before the reset.
 
 **When sync runs:**
 
@@ -235,15 +255,22 @@ stay a plain linear history.
 
 ```ts
 interface SyncTransport {
-  getHead(): Promise<CommitSha>;
-  getTree(sha: TreeSha, path: string): Promise<TreeEntry[]>;          // non-recursive
-  getTreeRecursive?(commit: CommitSha): Promise<TreeEntry[] | 'truncated'>;
+  getHead(): Promise<CommitSha | null>;                       // null: empty repo
+  // One directory of a commit. `sha` is the directory's tree SHA from its
+  // parent's listing (undefined for the root): GitHub lists by SHA, GitLab by path.
+  listTree(commit: CommitSha, path: string, sha: string | undefined): Promise<TreeEntry[]>;
   readBlobs(entries: { path: string; sha: BlobSha }[]): Promise<Map<string, Uint8Array>>;
   readFile(path: string, ref: CommitSha): Promise<Uint8Array | null>;   // lm.json
-  commit(parent: CommitSha, changes: FileChange[]): Promise<CommitSha | 'conflict'>;
+  commit(parent: CommitSha | null, changes: FileChange[]): Promise<CommitSha | 'conflict'>;
   rateLimit(): RateLimitState;
 }
 ```
+
+- Transports throw `RateLimitedError` (with the reset time) and `AuthError`
+  (expired or revoked token). The engine turns these into the `rateLimited`
+  and `authError` outcomes; any other error is `error`.
+- A recursive-tree shortcut for small GitHub repos (§5) can be added inside
+  the GitHub transport without changing this interface.
 
 ### GitHub (github.com and GitHub Enterprise; configurable API base)
 
@@ -298,8 +325,20 @@ interface SyncTransport {
 
 ### Fake (tests)
 
-An in-memory implementation with exactly the CAS semantics above. Tests can
-inject latency, 422/409 conflicts, rate-limit responses and truncation.
+`FakeForge` in `@lm/sync`: an in-memory implementation with exactly the CAS
+semantics above, and tree SHAs that change exactly when something below them
+changes. Tests inject races (`beforeCommit`), failures and rate limits
+(`onRequest`).
+
+**Convergence simulator** (`packages/sync/src/sim`):
+
+- 5 devices with skewed clocks share one fake forge.
+- Random creates, field edits, line edits, deletes, restores and syncs.
+  Syncs sometimes race another device mid-push.
+- At the end every device syncs until nothing changes. They must then hold
+  identical records, with no record lost and nothing left unpushed or kept.
+- CI runs 6 seeds × 300 ops on every PR. The nightly workflow runs 1,000
+  seeds × 1,000 ops.
 
 ## 8. Onboarding flow
 
@@ -344,7 +383,16 @@ inject latency, 422/409 conflicts, rate-limit responses and truncation.
   shows a status pill (synced, syncing, offline, error).
 - **Expired or revoked token:** pause sync and show a banner to fix it in
   Settings.
-- **Undecryptable file:** skip it, keep a list under Settings → Sync →
-  Problems, and never delete it.
+- **A remote file this device can't use:** skip it, record it in `sync_kept`
+  with a reason, list it under Settings → Sync → Problems, and never delete
+  it. The reasons:
+  - `decryptFailed`, `notJson`;
+  - `wrongPath` (the id inside doesn't belong at this path);
+  - the decoder's `malformedEnvelope`, `unknownType`, `futureSchema`,
+    `upgradeFailed` and `invalidData`;
+  - `localUndecodable`: the local copy can't be read, so it isn't
+    overwritten.
+
+  A file that later decodes is removed from the list.
 - **Record with a newer `schema` than this app understands:** keep the raw
   envelope and don't overwrite it. Show an "update the app" banner.

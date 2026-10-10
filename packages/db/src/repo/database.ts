@@ -96,6 +96,50 @@ interface EntityRow {
   extra: string | null;
 }
 
+/** Sync-side access inside one transaction (see `syncTransaction`). Used by `@lm/sync` only. */
+export interface SyncTx {
+  /** A local record, including tombstones; `undecodable` rows must not be overwritten. */
+  get<T extends EntityType>(
+    type: T,
+    id: string,
+  ): Promise<
+    { status: 'ok'; record: EntityRecord<T> } | { status: 'missing' } | { status: 'undecodable' }
+  >;
+  /** Writes a remote or merged record as is: no new HLC. `dirty` queues it for the next push. */
+  put(record: EntityRecord, options: { dirty: boolean }): Promise<void>;
+  /** Advances the local clock past a remote HLC (SYNC.md §3). */
+  receive(remote: Hlc): void;
+  /** The merge base: the envelope this device last pushed or accepted, undecoded. */
+  base(id: string): Promise<unknown>;
+  setBase(record: EntityRecord): Promise<void>;
+  changeLog(): Promise<ChangeLogEntry[]>;
+  /** Removes the change-log entry if it still has this HLC. Returns whether it did. */
+  clearDirty(id: string, hlc: Hlc): Promise<boolean>;
+  remote(): Promise<Map<string, { sha: string; kind: 'blob' | 'tree' }>>;
+  setRemote(path: string, sha: string, kind: 'blob' | 'tree'): Promise<void>;
+  deleteRemote(path: string): Promise<void>;
+  keep(entry: {
+    path: string;
+    blobSha: string;
+    recordId?: string;
+    reason: string;
+    raw?: unknown;
+    issues: string[];
+  }): Promise<void>;
+  unkeep(path: string): Promise<void>;
+  getMeta(key: string): Promise<string | null>;
+  setMeta(key: string, value: string): Promise<void>;
+}
+
+export interface KeptFile {
+  path: string;
+  blobSha: string;
+  recordId: string | null;
+  reason: string;
+  issues: string[];
+  seenAt: string;
+}
+
 export class RecordNotFoundError extends Error {
   override name = 'RecordNotFoundError';
 }
@@ -360,6 +404,137 @@ export class LmDatabase {
     };
   }
 
+  // --- sync (P0.6) -----------------------------------------------------------
+
+  /**
+   * Runs `fn` in one transaction with access to the sync bookkeeping
+   * (SYNC.md §4–5). Sync reads, merges and writes inside it, so a local edit
+   * can't land between reading "ours" and writing the merge. Listeners are
+   * notified once, after the commit.
+   */
+  async syncTransaction<R>(fn: (tx: SyncTx) => Promise<R>): Promise<R> {
+    const touched = new Set<EntityType>();
+    const result = await this.driver.transaction(async (tx) => {
+      const value = await fn(this.syncTx(tx, touched));
+      await tx.run('INSERT OR REPLACE INTO sync_meta (key, value) VALUES (?, ?)', [
+        'hlc',
+        JSON.stringify(this.hlc.state()),
+      ]);
+      return value;
+    });
+    if (touched.size > 0) this.notify([...touched]);
+    return result;
+  }
+
+  private syncTx(tx: SqlExecutor, touched: Set<EntityType>): SyncTx {
+    return {
+      get: async (type, id) => {
+        const row = (await tx.all<EntityRow>(`SELECT * FROM ${table(type)} WHERE id = ?`, [id]))[0];
+        if (!row) return { status: 'missing' };
+        const record = this.decode(type, row);
+        return record ? { status: 'ok', record } : { status: 'undecodable' };
+      },
+      put: async (record, { dirty }) => {
+        await this.store(tx, record as StoredRecord, dirty);
+        touched.add(record.type);
+      },
+      receive: (remote) => {
+        this.hlc.receive(remote);
+      },
+      base: async (id) => {
+        const row = (
+          await tx.all<{ envelope: string }>('SELECT envelope FROM sync_base WHERE record_id = ?', [
+            id,
+          ])
+        )[0];
+        return row ? (JSON.parse(row.envelope) as unknown) : null;
+      },
+      setBase: async (record) => {
+        await tx.run(
+          'INSERT OR REPLACE INTO sync_base (record_id, type, envelope) VALUES (?, ?, ?)',
+          [record.id, record.type, JSON.stringify(record)],
+        );
+      },
+      changeLog: async () => {
+        const rows = await tx.all<{ record_id: string; type: string; hlc: string }>(
+          'SELECT record_id, type, hlc FROM change_log ORDER BY hlc, record_id',
+        );
+        return rows.map((r) => ({ recordId: r.record_id, type: r.type as EntityType, hlc: r.hlc }));
+      },
+      clearDirty: async (id, hlc) => {
+        // A record edited again while it was being pushed keeps its entry.
+        const { changes } = await tx.run('DELETE FROM change_log WHERE record_id = ? AND hlc = ?', [
+          id,
+          hlc,
+        ]);
+        return changes > 0;
+      },
+      remote: async () => {
+        const rows = await tx.all<{ path: string; sha: string; kind: 'blob' | 'tree' }>(
+          'SELECT path, sha, kind FROM sync_remote',
+        );
+        return new Map(rows.map((r) => [r.path, { sha: r.sha, kind: r.kind }]));
+      },
+      setRemote: async (path, sha, kind) => {
+        await tx.run('INSERT OR REPLACE INTO sync_remote (path, sha, kind) VALUES (?, ?, ?)', [
+          path,
+          sha,
+          kind,
+        ]);
+      },
+      deleteRemote: async (path) => {
+        await tx.run('DELETE FROM sync_remote WHERE path = ?', [path]);
+      },
+      keep: async (entry) => {
+        await tx.run(
+          `INSERT OR REPLACE INTO sync_kept (path, blob_sha, record_id, reason, raw, issues, seen_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            entry.path,
+            entry.blobSha,
+            entry.recordId ?? null,
+            entry.reason,
+            entry.raw === undefined ? null : JSON.stringify(entry.raw),
+            JSON.stringify(entry.issues),
+            this.instant(),
+          ],
+        );
+      },
+      unkeep: async (path) => {
+        await tx.run('DELETE FROM sync_kept WHERE path = ?', [path]);
+      },
+      getMeta: async (key) => {
+        const row = (
+          await tx.all<{ value: string }>('SELECT value FROM sync_meta WHERE key = ?', [key])
+        )[0];
+        return row ? row.value : null;
+      },
+      setMeta: async (key, value) => {
+        await tx.run('INSERT OR REPLACE INTO sync_meta (key, value) VALUES (?, ?)', [key, value]);
+      },
+    };
+  }
+
+  /** Remote files kept because this device can't use them (Settings → Sync → Problems). */
+  async keptFiles(): Promise<KeptFile[]> {
+    const rows = await this.driver.all<{
+      path: string;
+      blob_sha: string;
+      record_id: string | null;
+      reason: string;
+      issues: string;
+      seen_at: string;
+    }>('SELECT path, blob_sha, record_id, reason, issues, seen_at FROM sync_kept ORDER BY path');
+    return rows.map((r) => ({
+      path: r.path,
+      blobSha: r.blob_sha,
+      recordId: r.record_id,
+      reason: r.reason,
+      issues: JSON.parse(r.issues) as string[],
+      seenAt: r.seen_at,
+    }));
+  }
+
   // --- internals -----------------------------------------------------------
 
   private instant(): string {
@@ -422,7 +597,8 @@ export class LmDatabase {
     return null;
   }
 
-  private async store(tx: SqlExecutor, record: StoredRecord): Promise<void> {
+  /** Writes the row and its search entry; `dirty` also queues it for the next push. */
+  private async store(tx: SqlExecutor, record: StoredRecord, dirty = true): Promise<void> {
     const extra = Object.fromEntries(Object.entries(record).filter(([k]) => !ENVELOPE_KEYS.has(k)));
     await tx.run(
       `INSERT OR REPLACE INTO ${table(record.type)}
@@ -440,11 +616,13 @@ export class LmDatabase {
         Object.keys(extra).length > 0 ? JSON.stringify(extra) : null,
       ],
     );
-    await tx.run('INSERT OR REPLACE INTO change_log (record_id, type, hlc) VALUES (?, ?, ?)', [
-      record.id,
-      record.type,
-      record.hlc,
-    ]);
+    if (dirty) {
+      await tx.run('INSERT OR REPLACE INTO change_log (record_id, type, hlc) VALUES (?, ?, ?)', [
+        record.id,
+        record.type,
+        record.hlc,
+      ]);
+    }
     await this.index(tx, record);
   }
 

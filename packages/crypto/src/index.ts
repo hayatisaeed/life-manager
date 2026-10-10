@@ -32,6 +32,8 @@ export {
   deriveSubKeys,
   encryptBlob,
   encryptRecord,
+  recordFileName,
+  recordNameFromPath,
   recordPath,
   type SubKeys,
 } from './codecs';

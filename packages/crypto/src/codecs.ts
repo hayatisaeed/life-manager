@@ -30,22 +30,44 @@ const LMR_PREFIX = 'LMR1.';
 // "LMB1" in ASCII. A literal, because libsodium isn't loaded at import time.
 const LMB_MAGIC = Uint8Array.of(0x4c, 0x4d, 0x42, 0x31);
 
-const recordAd = (recordId: string) => `lmr1|${recordId}`;
+// Records are bound to their file name, the keyed hash of their id (ADR-019):
+// a device that has never seen a record can read its name, but not its id.
+const recordAd = (fileName: string) => `lmr1|${fileName}`;
 const blobAd = (contentHash: string) => `lmb1|${contentHash}`;
 
-/** `.lmr` text: `LMR1.` + base64url(nonce ‖ ciphertext). */
+/** `.lmr` text: `LMR1.` + base64url(nonce ‖ ciphertext), bound to the record's file name. */
 export function encryptRecord(keys: SubKeys, recordId: string, plaintext: Uint8Array): string {
-  return LMR_PREFIX + toB64url(seal(keys.record, plaintext, recordAd(recordId)));
+  return (
+    LMR_PREFIX + toB64url(seal(keys.record, plaintext, recordAd(recordFileName(keys, recordId))))
+  );
 }
 
 /**
- * Throws `malformed` for a file that isn't an `.lmr`, and `auth-failed` for a
- * wrong key, a file at another record's path, or any tampering or truncation.
- * Callers keep such files and report them (SYNC.md §10); never delete them.
+ * Decrypts the `.lmr` file found at `path`. Throws `malformed` for a path or
+ * file that isn't a record, and `auth-failed` for a wrong key, a file moved
+ * from another path, or any tampering or truncation.
+ *
+ * The caller must then check that the decrypted record's id belongs at this
+ * path (`recordPath(keys, id) === path`); only that closes the loop between
+ * the name and the content. Files that fail either check are kept and
+ * reported (SYNC.md §10), never deleted.
  */
-export function decryptRecord(keys: SubKeys, recordId: string, text: string): Uint8Array {
+export function decryptRecord(keys: SubKeys, path: string, text: string): Uint8Array {
+  const name = recordNameFromPath(path);
   if (!text.startsWith(LMR_PREFIX)) throw new LmCryptoError('malformed', 'not an LMR1 record');
-  return open(keys.record, fromB64url(text.slice(LMR_PREFIX.length)), recordAd(recordId));
+  return open(keys.record, fromB64url(text.slice(LMR_PREFIX.length)), recordAd(name));
+}
+
+const RECORD_PATH = /^r\/([0-9a-f]{2})\/([0-9a-f]{2})\/([0-9a-f]{64})\.lmr$/;
+
+/** The file name (keyed hash) in a record path, after checking the shard directories match it. */
+export function recordNameFromPath(path: string): string {
+  const m = RECORD_PATH.exec(path);
+  const name = m?.[3];
+  if (!m || !name || m[1] !== name.slice(0, 2) || m[2] !== name.slice(2, 4)) {
+    throw new LmCryptoError('malformed', 'not a record path');
+  }
+  return name;
 }
 
 /** Hex BLAKE2b-256 of an attachment's plaintext. Names and binds its blob. */
@@ -69,9 +91,14 @@ function shardedPath(dir: 'r' | 'b', name: string, ext: string): string {
   return `${dir}/${name.slice(0, 2)}/${name.slice(2, 4)}/${name}.${ext}`;
 }
 
+/** hex BLAKE2b-256(pathKey, recordId): a record's file name without directories or extension. */
+export function recordFileName(keys: SubKeys, recordId: string): string {
+  return toHex(hash256(utf8(recordId), keys.path));
+}
+
 /** `r/<s1>/<s2>/<hex BLAKE2b-256(pathKey, recordId)>.lmr` */
 export function recordPath(keys: SubKeys, recordId: string): string {
-  return shardedPath('r', toHex(hash256(utf8(recordId), keys.path)), 'lmr');
+  return shardedPath('r', recordFileName(keys, recordId), 'lmr');
 }
 
 /** `b/<s1>/<s2>/<hex BLAKE2b-256(pathKey, contentHash)>.lmb`; the hash is hashed as its hex text. */
