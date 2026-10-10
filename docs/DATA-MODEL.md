@@ -18,6 +18,8 @@ this document. If you change one, change the other in the same PR.
   - `type`, `schema`, `hlc`, `fieldHlc`.
   - `deletedAt`: an `Instant`, or null.
   - `createdAt`: an `Instant`.
+  - `conflicts?`: the fields that hold an unresolved text-merge conflict
+    (SYNC.md §6).
   - Only `data` is listed below.
 - **Optional fields** (`field?`) are left out when empty. They are never
   `undefined` or `null`.

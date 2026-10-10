@@ -212,3 +212,37 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
   - No real data exists yet, so the filled gaps can still be changed freely
     before the first release.
 
+### ADR-014 — Merge implementation details
+2026-10-10 · accepted
+
+- **Context:** SYNC.md §6 gives the merge rules. Implementing them showed a
+  few gaps:
+  - where `hasConflict` lives;
+  - how ties and list items are handled;
+  - how a deletion interacts with a restore;
+  - how to stay commutative down to the byte.
+- **Decision:**
+  - `hasConflict` is the envelope field `conflicts: string[]`, which lists the
+    field names. It is merged as a set, so a resolution sticks.
+  - **No side preference:** choices between sides are made by HLC, then by
+    canonical JSON, never by which side is local.
+    - Sets are output sorted, lists by `(order, id)`, and keys sorted.
+    - The text-conflict block puts the older version first.
+    - As a result, both devices write byte-identical records, and git blob
+      SHAs match.
+  - **Lists:** items edited on both sides merge property by property, using
+    the list field's HLCs. An edit beats a removal.
+  - **Deletion:**
+    - The one-sided rule applies first. Both deleted keeps the earlier
+      timestamp, and a restore beats a re-delete.
+    - Edit-beats-delete then undeletes, and `restored` is reported.
+  - **Invalid results:** a merged record that breaks a cross-field rule is
+    returned whole, with `issues`, never dropped or "fixed".
+  - **Library:** text merge is line-based `node-diff3` (`diff3Merge`, false
+    conflicts excluded). The two sides are passed in HLC order.
+- **Consequences:**
+  - The merge is pure and side-agnostic, so the sync engine can call it in
+    either direction.
+  - Conflict blocks are plain text markers in the field. The UI must detect
+    them through `conflicts`, not by parsing.
+

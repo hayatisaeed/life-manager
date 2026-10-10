@@ -80,6 +80,8 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
   returned as `kept`, with one of these reasons: `malformedEnvelope`,
   `unknownType`, `futureSchema`, `upgradeFailed` or `invalidData`. The engine
   stores it untouched and never deletes it.
+- **`conflicts`** (optional) lists the fields that hold an unresolved text
+  conflict block (§6).
 - **Unknown top-level keys are carried along.** The envelope is a loose
   object, so keys added by a newer client survive a round-trip.
 
@@ -159,13 +161,69 @@ stay a plain linear history.
 | Scalar changed on both sides | The value with the higher `fieldHlc`; ties go to the lexicographically larger deviceId |
 | Set or array of ids (tags, links, participants) | `base + (oursAdded ∪ theirsAdded) − (oursRemoved ∪ theirsRemoved)` |
 | Ordered list (routine steps, checklist) | Merged by item id, using the scalar rule for order keys (fractional indexing) |
-| Long text (`body`, `notes`, `content`) | diff3. On overlapping hunks, keep both versions in a fenced conflict block and set `hasConflict = true`; the UI shows a banner |
+| Long text (`body`, `notes`, `content`) | diff3. On overlapping hunks, keep both versions in a fenced conflict block and add the field to the envelope's `conflicts`; the UI shows a banner |
 | Deleted on one side, edited on the other | The edit wins and the record is undeleted. A toast reports "restored" |
 | Deleted on both sides | Deleted |
 | No base (both created with the same id) | Impossible with ULIDs. Treat as a scalar merge with an empty base |
 
-**Properties:** the rules must be commutative and idempotent. The convergence
-simulator checks both.
+**Implementation details** (`mergeRecords` in `@lm/core`, ADR-014):
+
+- **Merge kinds:** each entity declares which fields are `text`, `set` or
+  `list` (DATA-MODEL.md §1). Everything else is a scalar.
+- **No side preference:** every choice between the two sides is made by HLC,
+  then by the canonical JSON of the value, never by which side is local. So
+  `merge(b, o, t)` and `merge(b, t, o)` give byte-identical records. A field
+  without a `fieldHlc` entry uses the record's `hlc`.
+- **Sets:** compared by canonical JSON. The merged array is sorted by it.
+- **Lists:**
+  - Items are matched by `id`.
+  - An item removed on one side and edited on the other is kept.
+  - An item edited on both sides is merged property by property with the
+    scalar rule, using the list field's HLCs.
+  - The result is sorted by `(order, id)`.
+- **Long text:**
+  - Merged line by line.
+  - A conflict block lists the older version first, then the newer:
+
+    ```
+    <<<<<<< conflict
+    …older…
+    =======
+    …newer…
+    >>>>>>> end
+    ```
+  - An optional text field cleared on one side, with no other text left,
+    stays absent.
+- **Conflict list:** the envelope's `conflicts` (sorted field names) is merged
+  as a set with its base, plus the fields that got new conflict blocks. When
+  the user resolves a conflict, they remove the field from the list, and that
+  removal survives sync.
+- **Deletion:**
+  - `deletedAt` first gets the one-sided rule. If both sides deleted, the
+    earlier timestamp is kept. If both sides changed it and one side
+    restored the record, the restore wins.
+  - Then, if the record would be deleted but a side that isn't deleted
+    changed `data` since the base, the record is restored. The result
+    reports `restored` so the UI can show the toast.
+- **Free-form maps:** `data._unknown` and envelope keys from newer clients are
+  merged key by key with the scalar rule, on the record HLCs.
+- **Envelope fields:** the merged `hlc` and each `fieldHlc` are the maximum of
+  both sides. `createdAt` is the earlier of the two.
+- **Invalid results are kept:** a field-wise merge can break a cross-field
+  rule (for example `dueTime` without `dueDate`). The merged record is still
+  returned whole, together with the validation `issues`, so nothing is
+  dropped.
+
+**Properties:** the rules must be commutative and idempotent.
+
+- fast-check tests in `packages/core/src/merge/` check:
+  - commutativity, byte for byte;
+  - idempotence;
+  - that one-sided changes apply unchanged;
+  - that two devices converge;
+  - that no added set element, list item or text line is lost.
+- The convergence simulator in `packages/sync` (P0.6) checks the same laws
+  across full sync cycles.
 
 ## 7. Transports
 

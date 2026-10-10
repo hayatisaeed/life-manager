@@ -57,7 +57,7 @@ ADR and reflected in SYNC.md.
   indexing
 - [x] Envelope + zod entity schemas for **all** entities in DATA-MODEL.md, with
   schema versions and the upgrader framework
-- [ ] The merge function (SYNC.md §6) with property tests for commutativity,
+- [x] The merge function (SYNC.md §6) with property tests for commutativity,
   idempotence and convergence
 - [ ] Recurrence engine (Gregorian and Jalali, `fixed` and `afterCompletion`
   modes)
