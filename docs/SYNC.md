@@ -109,6 +109,7 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
 | `sync_remote` | `path → blobSha` and `dir → treeSha` as of `lastSyncedCommit` |
 | `sync_base` | `recordId → plaintext envelope` as of the last sync. This is the merge base. |
 | `change_log` | Record ids changed locally since the last successful push |
+| `sync_kept` | Remote files this device can't decrypt or decode: path, blob SHA, reason. Kept, never deleted (§10) |
 
 **Merge base without git:** "base" is whatever this device last pushed or
 accepted for a record. The forge's commit graph isn't needed, so the forge can

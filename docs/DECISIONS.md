@@ -346,3 +346,86 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
     format version.
   - Long blobs (up to 50 MB) are sealed in one shot, in memory. Streaming
     (`secretstream`) would need a new `LMB2` format.
+
+### ADR-018 — Local database design
+2026-10-10 · accepted
+
+- **Context:** P0.5 builds `packages/db`. ARCHITECTURE.md §4 left open:
+  - how the "typed tables per entity" are laid out;
+  - where the drivers live and how transactions work over async platform
+    APIs;
+  - what the search index covers;
+  - how attachments are stored.
+- **Decision:**
+  - **Drivers** live in `packages/db`, behind `SqlDriver` (`run`, `all`,
+    `script`, `transaction`, `close`). Values are text, numbers or null
+    only; no BLOBs.
+    - `createSerialDriver` puts every call through one queue, and a
+      transaction is `BEGIN IMMEDIATE … COMMIT`. A statement from elsewhere
+      can't land inside an open transaction.
+    - Web: sqlite-wasm in a dedicated worker on `opfs-sahpool`, reached over
+      a small `postMessage` RPC. The worker reserves pool capacity before
+      opening: the default 6 slots ran out in the browser suite with
+      `SQLITE_CANTOPEN`.
+    - Tauri and Capacitor: the shells pass in the plugin's connection object
+      (structural interfaces), so `db` has no native dependencies. Capacitor
+      calls always pass `transaction = false`.
+  - **Entity tables:** one table per type, `ent_<snake_case type>`, with
+    columns `id, schema, hlc, field_hlc, deleted_at, created_at, device_id,
+    data (JSON), extra (JSON of other envelope keys such as conflicts)`.
+    - Query fields are indexed with `json_extract(data, '$.field')`
+      expression indexes, chosen per type in the migration.
+    - Storing `data` as JSON keeps `_unknown` and nested values exactly as
+      decoded, and avoids hand-written columns for 46 types.
+    - Migration 1 uses a frozen list of types. A test fails when core gains
+      an entity without a migration that creates its table.
+  - **Bookkeeping:** `sync_meta` (key/value: device id, HLC state),
+    `sync_remote`, `sync_base`, `change_log` and `sync_kept` (remote files
+    that can't be used, kept and listed, SYNC.md §10).
+  - **Repository writes:**
+    - Each write is one transaction: the row, `change_log`, the search index
+      and the persisted HLC state.
+    - Updates stamp a field HLC only on fields whose value changed, compared
+      as JSON with sorted keys. A no-op update writes nothing.
+    - Deletes are tombstones, and `restore` undoes them. Editing a
+      tombstone is refused.
+    - Rows are decoded with core's `decodeRecord` on every read, so older
+      schemas upgrade transparently. A row that no longer decodes is
+      skipped, reported through `onProblem` and never deleted.
+  - **Live queries:** listeners run in a microtask after each committed
+    write that touched their types. `liveQuery` drops results that arrive
+    out of order.
+  - **Search:** FTS5 (`unicode61 remove_diacritics 2`) over a title and a
+    body per type.
+    - The title is the first of `title, name, text, …`. The body is the
+      type's `text` merge fields, plus `back` and `transcript`.
+    - `search_doc` maps `(type, id)` to a stable FTS rowid, so an update
+      doesn't scan the index.
+    - Text is NFKC-normalized, and Arabic yeh/kaf become the Persian forms.
+    - Words containing a ZWNJ are indexed both split and joined. The
+      tokenizer splits at the ZWNJ, but people type these words both ways.
+    - Queries quote every word as a prefix term, so user input can't use
+      FTS5 operators.
+  - **Attachments:** `AttachmentStore` on a `FileStore` (in
+    `@lm/platform`: an in-memory store, and OPFS on the web).
+    - Each file is exactly the repo's `.lmb` bytes, named like the repo
+      path's last segment. Sync can move files without re-encrypting, and
+      local names don't reveal content hashes.
+    - Reads verify both the AEAD and the content hash.
+    - `db` now depends on `@lm/crypto`; the dependency direction in
+      ARCHITECTURE.md §3 already allowed it.
+- **Consequences:**
+  - Queries on unindexed fields scan the table. Adding an index means adding
+    a migration.
+  - Unverified on devices:
+    - **Tauri:** `tauri-plugin-sql` runs queries on a connection pool, and
+      BEGIN/COMMIT may not reach the same connection. If not, the desktop
+      needs a small single-connection Rust command.
+    - **Capacitor:** BEGIN/COMMIT through `run()`.
+    - FTS5 availability in both native SQLite builds.
+    - OPFS `createWritable` in Safari.
+
+    The P0.2 Tauri and Capacitor spikes must check these.
+  - Multi-tab web use stays out (ADR-011). The app shell (P0.7) owns the Web
+    Locks election and starts the worker.
+

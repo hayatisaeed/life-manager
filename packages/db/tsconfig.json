@@ -1,4 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The database runs in a browser worker and on the main thread.
+    "lib": ["ES2023", "DOM"]
+  },
   "include": ["src"]
 }

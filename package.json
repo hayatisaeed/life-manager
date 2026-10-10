@@ -16,7 +16,7 @@
     "format:check": "prettier --check .",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:e2e": "pnpm --filter @lm/web test:e2e",
+    "test:e2e": "pnpm --filter @lm/web --filter @lm/db test:e2e",
     "stories": "pnpm --filter @lm/ui stories",
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test"
   },

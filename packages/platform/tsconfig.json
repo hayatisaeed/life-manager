@@ -1,4 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Web implementations use browser APIs (OPFS, Web Locks).
+    "lib": ["ES2023", "DOM"]
+  },
   "include": ["src"]
 }

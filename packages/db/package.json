@@ -9,10 +9,20 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@lm/core": "workspace:*",
-    "@lm/platform": "workspace:*"
+    "@lm/crypto": "workspace:*",
+    "@lm/platform": "workspace:*",
+    "@sqlite.org/sqlite-wasm": "3.53.4-build2",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@vitest/coverage-v8": "5.0.3",
+    "fast-check": "4.10.2",
+    "vite": "8.3.4"
   }
 }
