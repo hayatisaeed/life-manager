@@ -230,7 +230,9 @@ the spike stays unchecked until the owner's results are in.
   - engine two-device syncs through each real transport, including a CAS
     race on GitHub and a rebased push on GitLab;
   - error, rate-limit and malformed-response cases.
-  - Locally, 40 seeds × 1,000 ops converged with both CAS kinds (see below).
+  - Locally, 40 seeds × 1,000 ops converged with both CAS kinds (11 min).
+    The nightly workflow now runs 20 shards × 50 seeds, so the doubled runs
+    still fit its 60-minute limit.
 - **Surprises:**
   - A test caught a wrong GitHub Enterprise GraphQL URL (`/apigraphql`)
     before it shipped.

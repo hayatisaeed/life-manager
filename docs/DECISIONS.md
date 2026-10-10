@@ -496,7 +496,7 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
       or unpushed, and at least one real CAS rejection across the run.
     - A deliberately broken merge was confirmed to fail it.
     - CI runs 6 × 300 ops; the nightly workflow runs 1,000 seeds × 1,000
-      ops in 10 shards.
+      ops in 10 shards (20 × 50 since ADR-022).
 - **Consequences:**
   - The engine is complete against the fake forge. The real transports must
     match the fake's CAS semantics; their contract tests will check that.

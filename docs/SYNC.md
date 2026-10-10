@@ -380,7 +380,7 @@ changes. Tests inject races (`beforeCommit`), failures and rate limits
 - At the end every device syncs until nothing changes. They must then hold
   identical records, with no record lost and nothing left unpushed or kept.
 - Every seed runs once with each CAS kind. CI runs 6 seeds × 300 ops on every
-  PR. The nightly workflow runs 1,000 seeds × 1,000 ops.
+  PR. The nightly workflow runs 1,000 seeds × 1,000 ops in 20 shards.
 
 **Emulators and the contract suite:** `GitHubEmulator` and `GitLabEmulator`
 (`src/test-support`) stand in for the forge APIs behind a `fetch`, so the real
