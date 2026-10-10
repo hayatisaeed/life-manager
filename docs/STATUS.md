@@ -9,20 +9,32 @@ short and current. Add new log entries at the top.
   - Done:
     - P0.1 Monorepo & tooling;
     - P0.3 Core primitives (ADR-012…015);
-    - P0.4 Crypto (ADR-016, ADR-017);
-    - **P0.5 Local DB** (ADR-018). Its acceptance check on desktop and
-      mobile drivers is still pending (see Unverified).
+    - P0.4 Crypto (ADR-016, ADR-017, and ADR-019's format fix);
+    - P0.5 Local DB (ADR-018). Its manual check of the desktop and mobile
+      drivers is still pending.
+  - **P0.6 Sync engine is about two-thirds done** (ADR-020).
+    - Done:
+      - the transport interface;
+      - the fake forge;
+      - the full sync cycle wired into the database;
+      - the convergence simulator (CI on every PR, plus a nightly
+        1,000-seed run).
+    - Left:
+      - the real GitHub and GitLab transports;
+      - their opt-in contract tests;
+      - the AC's real two-device sync on each forge.
   - Partly done: P0.2 Spikes.
-    - Done: sqlite-wasm OPFS (ADR-011).
+    - Done: sqlite-wasm OPFS.
     - Argon2id was measured on desktop only.
     - GitHub: read-side checks pass; the write/CAS/GraphQL script waits for
       the owner's local run.
     - Not run: GitLab, Tauri, Capacitor.
-- **Next milestone:** **P0.6 Sync engine** (`packages/sync`).
-  - The fake forge, the sync cycle and the convergence simulator can all be
-    built now.
-  - The real GitHub transport should wait for the owner's spike results,
-    which may change the empty-repo bootstrap and CAS details.
+- **Next:**
+  - **P0.6 part 2:** the GitHub transport, as soon as the owner's spike
+    results are in (they settle the empty-repo bootstrap and the CAS
+    details); then GitLab.
+  - P0.7 App shells can start in parallel: platform interfaces, theme, i18n
+    and the onboarding UI against the fake forge.
 - **Blockers / needs owner input:**
   - **GitHub spike: the owner needs to run `pnpm github` locally** (see
     spikes/README.md). Cloud sessions' GitHub proxy blocks REST writes,
@@ -35,15 +47,16 @@ short and current. Add new log entries at the top.
     are still unverified.
   - API rate limits during the first sync of large repos.
   - The HLC has no maximum-drift guard; one device with a far-future clock
-    drags every HLC forward. P0.6 should decide how to handle that (ADR-012).
+    drags every HLC forward. Still open (ADR-012, ADR-020).
   - A 50k-record first import into sqlite-wasm takes about 5 s; it needs
     batching and a progress bar.
 - **Unverified:**
   - the forge spikes;
   - Argon2id on Android (it may lower the ADR-016 default to 128 MiB);
   - the Tauri and Capacitor SQL drivers on real devices, including FTS5 in
-    their SQLite builds (the P0.5 AC's manual check);
-  - OPFS `createWritable` in Safari.
+    their SQLite builds;
+  - OPFS `createWritable` in Safari;
+  - the nightly workflow (it first runs after merge).
 
 ## Handoff notes for the next session
 
@@ -103,6 +116,26 @@ the spike stays unchecked until the owner's results are in.
 - Still to build in P0.7: the web "unlock for 7 days" wrap and the `lm-locl`
   secret store.
 
+**P0.6 sync, for the GitHub/GitLab transports and P0.7:**
+
+- `SyncEngine({ db, transport, keys, rng })` and `engine.sync()`, which
+  returns `ok | conflict | rateLimited | authError | error`.
+  `packages/sync/src/test-support/devices.ts` shows the wiring.
+- **A real transport must behave exactly like `FakeForge`:**
+  - `commit` returns `'conflict'` when the branch moved;
+  - `listTree` returns direct children with SHAs;
+  - `readBlobs` leaves out missing blobs;
+  - it throws `RateLimitedError` and `AuthError`.
+
+  Write the contract tests (`LM_TEST_GITHUB_*`) as one shared suite run
+  against both `FakeForge` and the real transport.
+- **The engine doesn't create `lm.json` or the first commit.** It reports an
+  error on an empty repo. Onboarding (P0.7) does that, through
+  `createLmJson` and the transport, and the spike decides how on GitHub.
+- **The simulator:** `SIM_SEEDS`, `SIM_OPS` and `SIM_FIRST_SEED` control
+  `pnpm --filter @lm/sync exec vitest run src/sim`. Run it after any change
+  to `packages/sync` or the merge (AGENTS.md §4.3).
+
 **P0.5 db, for P0.6 (sync) and P0.7 (shells):**
 
 - Open the database with `LmDatabase.open({ driver, clock, rng, onProblem })`.
@@ -111,16 +144,8 @@ the spike stays unchecked until the owner's results are in.
     entry at `packages/db/src/web/sqlite.worker.ts`;
     `createTauriDriver(db)`; `createCapacitorDriver(conn)`;
     `openMemoryDriver()` for tests.
-- **Sync still needs** (P0.6, intentionally not built yet):
-  - a "put remote record" path that writes a merged or remote envelope
-    without stamping a new HLC, calls `hlc.receive`, and clears or keeps
-    `change_log` entries;
-  - helpers for `sync_base`, `sync_remote`, `sync_kept` and
-    `lastSyncedCommit`.
-
-  The tables exist (migration 1). Add these as methods on `LmDatabase` or as
-  a sibling class over the same driver, using one transaction per sync batch.
-  A batch can pass several types to `notify`.
+- Sync uses `LmDatabase.syncTransaction` (added in P0.6) for everything it
+  writes.
 - **Attachments:** the stored files are already the `.lmb` repo bytes, named
   `basename(blobPath(keys, hash))`. Sync uploads and downloads them as they
   are; verify downloads with `AttachmentStore.get`.
@@ -133,6 +158,35 @@ the spike stays unchecked until the owner's results are in.
   - Wire `onProblem` to the sync status UI.
 
 ## Session log
+
+### 2026-10-10 — P0.6 part 1: sync engine, fake forge, simulator
+- **Spec contradiction, fixed with the owner (ADR-019).** Records were bound
+  to their id, which a device can't learn from a keyed file name. They are
+  now bound to the file name, and the engine checks the id against the path
+  after decrypting. The pinned `.lmr` vector changed.
+- **`@lm/db`:** `syncTransaction` (read, merge and write in one
+  transaction; base, change log, remote snapshot, kept files, metadata) and
+  `keptFiles()`.
+- **`@lm/sync`:**
+  - the `SyncTransport` interface (`listTree` instead of
+    `getTree`/`getTreeRecursive`);
+  - `FakeForge`;
+  - `SyncEngine`, with:
+    - the Merkle-diff pull and batched apply-or-merge;
+    - kept files with reasons;
+    - push with CAS, paging over several commits and backoff;
+    - rate-limit skips and the one-cycle lock.
+- **Tests:**
+  - 23 engine and forge tests, 97.6% branch coverage;
+  - the simulator: 6 seeds × 300 ops in CI, with an assertion that real CAS
+    races occurred.
+  - Locally, 40 seeds × 1,000 ops all converged; a 1,000-seed × 300-op run was in progress at commit time.
+  - A deliberately broken merge made the simulator fail, as it should.
+  - Nightly workflow: 1,000 seeds × 1,000 ops in 10 shards.
+- **Surprise:** the first Merkle-walk version kept stale snapshot entries
+  when a whole directory disappeared. A test caught it, and it's fixed.
+- **Left for P0.6 part 2:** the GitHub and GitLab transports and their
+  contract tests, after the owner's spike run.
 
 ### 2026-10-10 — P0.5 Local DB
 - **Drivers** (`SqlDriver`): in-memory sqlite-wasm (tests), a web worker on

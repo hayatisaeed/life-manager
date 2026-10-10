@@ -83,11 +83,11 @@ rejected.
 desktop and mobile drivers are checked manually.
 
 ### P0.6 Sync engine (`packages/sync`)
-- [ ] `SyncTransport` interface + fake forge
-- [ ] Sync cycle (SYNC.md §5), Merkle diff, batching, backoff, rate-limit
+- [x] `SyncTransport` interface + fake forge
+- [x] Sync cycle (SYNC.md §5), Merkle diff, batching, backoff, rate-limit
   tracking, lock
 - [ ] GitHub transport; GitLab transport
-- [ ] **Convergence simulator:** 5 devices × 1,000 random operations, random
+- [x] **Convergence simulator:** 5 devices × 1,000 random operations, random
   sync order, must reach identical state. Runs in CI (short) and nightly
   (long).
 - [ ] Opt-in contract tests against real repos (`LM_TEST_GITHUB_*`,

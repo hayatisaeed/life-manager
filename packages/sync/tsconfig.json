@@ -1,4 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Runs on the main thread or a worker: timers and TextEncoder.
+    "lib": ["ES2023", "DOM"]
+  },
   "include": ["src"]
 }

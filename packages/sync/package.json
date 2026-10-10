@@ -9,12 +9,17 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --coverage"
   },
   "dependencies": {
     "@lm/core": "workspace:*",
     "@lm/crypto": "workspace:*",
     "@lm/db": "workspace:*",
-    "@lm/platform": "workspace:*"
+    "@lm/platform": "workspace:*",
+    "@noble/hashes": "2.4.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "5.0.3",
+    "fast-check": "4.10.2"
   }
 }

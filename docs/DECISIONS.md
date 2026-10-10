@@ -429,3 +429,79 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
   - Multi-tab web use stays out (ADR-011). The app shell (P0.7) owns the Web
     Locks election and starts the worker.
 
+### ADR-019 — Record files are bound to their file name, not their id
+2026-10-10 · accepted (owner)
+
+- **Context:**
+  - SECURITY.md §2 made a record's AEAD associated data `"lmr1|" + id`.
+  - A file's name is a one-way keyed hash of the id. A device pulling a
+    record it has never seen knows the name but not the id, so it could
+    never decrypt a new record.
+  - Building the sync engine (P0.6) exposed this.
+- **Decision:**
+  - The associated data is `"lmr1|" + fileName`, the 64-hex keyed hash in
+    the record's path.
+  - `decryptRecord(keys, path, text)` takes the path, and checks that its
+    shard directories match the name.
+  - After decrypting, the engine checks `recordPath(keys, id) === path`. A
+    mismatch is kept as `wrongPath`.
+  - Chosen by the owner over a plaintext id header, which would show every
+    record id to the forge.
+- **Consequences:**
+  - The same guarantees as before: a file moved to another path fails the
+    AEAD, and content that belongs elsewhere fails the id check. Nothing new
+    is revealed.
+  - The pinned `.lmr` test vector changed. No real data existed yet, so no
+    migration is needed.
+
+### ADR-020 — Sync engine design (fake forge, cycle, simulator)
+2026-10-10 · accepted
+
+- **Context:** P0.6 implements SYNC.md §5. The GitHub and GitLab transports
+  wait for the forge spike results (P0.2), so this part builds the
+  transport-independent pieces.
+- **Decision:**
+  - **Transport interface:**
+    - `listTree(commit, path, sha)` replaces `getTree`/`getTreeRecursive`.
+      GitHub lists by SHA, GitLab by path and ref, and the engine passes both.
+    - `getHead()` returns null for an empty repo.
+    - `commit(parent | null, changes)`.
+    - Errors are `RateLimitedError` and `AuthError`.
+  - **Pull:**
+    - A top-down Merkle walk against `sync_remote`. Blobs are read and
+      applied in batches of 100, one database transaction per batch.
+    - Read, merge and write go through `LmDatabase.syncTransaction`.
+    - Files that can't be used go to `sync_kept` and never block the rest.
+    - A local row that can't be decoded is never overwritten.
+  - **Push:**
+    - Up to 500 files per commit. Larger change logs take several commits in
+      one cycle.
+    - After a successful CAS, `sync_base` is set and change-log entries are
+      cleared only if their HLC is unchanged.
+    - Pushed blob SHAs are computed locally (SHA-1 via `@noble/hashes`;
+      libsodium has none). The SHAs of the directories above them are
+      dropped, so the next walk revisits those directories without
+      re-downloading.
+  - **Conflicts:** up to 5 attempts per cycle, with exponential backoff and
+    jitter.
+  - **Rate limits:** a cycle is skipped while fewer than 50 requests remain.
+  - **Lock:** one cycle at a time per engine; concurrent callers share the
+    running cycle. Cross-tab exclusion stays with the web shell's Web Lock
+    (ADR-011).
+  - **Simulator:**
+    - 5 devices with skewed clocks.
+    - Random record operations, plus syncs that race another device
+      mid-push.
+    - Pass criteria: identical final records, no record lost, nothing kept
+      or unpushed, and at least one real CAS rejection across the run.
+    - A deliberately broken merge was confirmed to fail it.
+    - CI runs 6 × 300 ops; the nightly workflow runs 1,000 seeds × 1,000
+      ops in 10 shards.
+- **Consequences:**
+  - The engine is complete against the fake forge. The real transports must
+    match the fake's CAS semantics; their contract tests will check that.
+  - Not handled yet:
+    - compaction, and a `lastSyncedCommit` that is no longer an ancestor
+      (SYNC.md §9, P10.4);
+    - the HLC drift guard (ADR-012 risk).
+
