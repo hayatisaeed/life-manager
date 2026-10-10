@@ -1,0 +1,70 @@
+/* Design tokens (docs/DESIGN.md §2). Components use semantic tokens only. */
+
+:root {
+  --bg: #ffffff;
+  --bg-subtle: #f7f7f8;
+  --bg-muted: #efeff1;
+  --border: #e4e4e7;
+  --text: #18181b;
+  --text-muted: #63636b;
+  --accent: #5b5bd6;
+  --accent-contrast: #ffffff;
+  --accent-soft: #ececfb;
+  --success: #2f9e6a;
+  --warning: #c98a12;
+  --danger: #d64545;
+  --success-soft: #e6f5ee;
+  --warning-soft: #fbf3e2;
+  --danger-soft: #fbeaea;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 8px 40px rgb(0 0 0 / 0.12);
+
+  /* Area palette: 10 hues of similar perceived lightness. */
+  --area-0: #5b5bd6;
+  --area-1: #2f9e6a;
+  --area-2: #d6409f;
+  --area-3: #c98a12;
+  --area-4: #0d8ecf;
+  --area-5: #d64545;
+  --area-6: #8e4ec6;
+  --area-7: #12a594;
+  --area-8: #e5631a;
+  --area-9: #6f7a85;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0e0f11;
+  --bg-subtle: #16171a;
+  --bg-muted: #1e1f23;
+  --border: #2a2b30;
+  --text: #ededef;
+  --text-muted: #9a9aa3;
+  --accent: #7c7cf0;
+  --accent-contrast: #0e0f11;
+  --accent-soft: #23234a;
+  --success: #4cc38a;
+  --warning: #e5a836;
+  --danger: #f06a6a;
+  --success-soft: #13291f;
+  --warning-soft: #2c2312;
+  --danger-soft: #2f1616;
+  --shadow: 0 0 0 1px var(--border);
+  --shadow-lg: 0 0 0 1px var(--border), 0 12px 40px rgb(0 0 0 / 0.5);
+
+  --area-0: #7c7cf0;
+  --area-1: #4cc38a;
+  --area-2: #e66bb8;
+  --area-3: #e5a836;
+  --area-4: #3fb0ea;
+  --area-5: #f06a6a;
+  --area-6: #a875dc;
+  --area-7: #3cc9b5;
+  --area-8: #f08550;
+  --area-9: #98a2ad;
+  color-scheme: dark;
+}

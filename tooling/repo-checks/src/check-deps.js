@@ -7,7 +7,7 @@ export const ALLOWED = {
   '@lm/core': [],
   '@lm/crypto': [],
   '@lm/platform': [],
-  '@lm/i18n': [],
+  '@lm/i18n': ['@lm/core'],
   '@lm/db': ['@lm/core', '@lm/platform'],
   '@lm/sync': ['@lm/core', '@lm/crypto', '@lm/db', '@lm/platform'],
   '@lm/calendar': ['@lm/core', '@lm/platform'],

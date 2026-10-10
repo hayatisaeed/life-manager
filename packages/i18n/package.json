@@ -10,5 +10,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@lm/core": "workspace:*",
+    "i18next": "26.4.3"
   }
 }

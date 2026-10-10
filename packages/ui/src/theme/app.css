@@ -1,0 +1,107 @@
+@import 'tailwindcss';
+@import './tokens.css';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/vazirmatn';
+
+@source '../';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@theme {
+  --color-bg: var(--bg);
+  --color-subtle: var(--bg-subtle);
+  --color-muted: var(--bg-muted);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-fg-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--accent-contrast);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-success-soft: var(--success-soft);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger-soft: var(--danger-soft);
+  --color-area-0: var(--area-0);
+  --color-area-1: var(--area-1);
+  --color-area-2: var(--area-2);
+  --color-area-3: var(--area-3);
+  --color-area-4: var(--area-4);
+  --color-area-5: var(--area-5);
+  --color-area-6: var(--area-6);
+  --color-area-7: var(--area-7);
+  --color-area-8: var(--area-8);
+  --color-area-9: var(--area-9);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-soft: var(--shadow);
+  --shadow-pop: var(--shadow-lg);
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --text-display: 28px;
+  --text-display--line-height: 34px;
+  --text-title: 20px;
+  --text-title--line-height: 28px;
+  --text-heading: 16px;
+  --text-heading--line-height: 24px;
+  --text-body: 14px;
+  --text-body--line-height: 22px;
+  --text-small: 12px;
+  --text-small--line-height: 18px;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 22px;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :lang(fa) body,
+  :lang(fa) {
+    font-family: 'Vazirmatn Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  }
+  @media (max-width: 639px) {
+    body {
+      font-size: 16px;
+      line-height: 24px;
+    }
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--accent-soft);
+  }
+  [dir='rtl'] .rtl-flip {
+    transform: scaleX(-1);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility safe-top {
+  padding-top: env(safe-area-inset-top);
+}
