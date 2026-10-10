@@ -142,6 +142,11 @@ ARCHITECTURE.md §3.
 
 - **GitHub/GitLab:** use test repos and tokens supplied through env vars only.
   Never use the owner's real data repo in tests.
+- **Cloud sessions can't write to GitHub through the API.** The session
+  proxy allows REST reads only: writes, GraphQL and `OPTIONS` are blocked.
+  Real-forge write, CAS and CORS tests must be run locally by the owner; give
+  them a script and record the results. Node `fetch` needs
+  `NODE_USE_ENV_PROXY=1` to reach the network in cloud sessions.
 - **AI:**
   - Before writing Claude integration code, consult the current Anthropic API
     docs or the `claude-api` skill if available. Don't rely on memory for

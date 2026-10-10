@@ -33,6 +33,7 @@ this list needs an entry in [DECISIONS.md](DECISIONS.md).
 | SRS | ts-fsrs | |
 | Text merge | node-diff3 | |
 | Crypto | libsodium-wrappers-sumo | Argon2id requires the sumo build |
+| Recovery words | @scure/bip39 | Standard BIP-39 encoding of the 256-bit recovery key (ADR-017) |
 | SQLite (web) | @sqlite.org/sqlite-wasm (`opfs-sahpool` VFS) | runs in a worker; one owner tab (ADR-011) |
 | SQLite (desktop) | tauri-plugin-sql | |
 | SQLite (mobile) | @capacitor-community/sqlite | |

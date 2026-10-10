@@ -25,7 +25,7 @@ prints PASS/FAIL lines to stderr and a JSON summary to stdout.
 |---|---|---|
 | sqlite-wasm OPFS in a worker | ✅ run (headless Chromium 141, Linux) | Both VFSes work, FTS5 is compiled in; see below |
 | Argon2id timing | ⚠️ partly run (x86 Xeon, Node + Chromium) | 256 MiB works in browser wasm; Android not measured |
-| GitHub API from the browser | ⚠️ preflights pass; full script not run | Needs a scratch repo and token |
+| GitHub API from the browser | ⚠️ preflights pass; read-side checks pass; write/CAS script not run | Owner runs `pnpm github` locally (see below) |
 | GitLab API from the browser | ⚠️ preflights pass; full script not run | Needs a scratch project and token |
 | Tauri 2 plugins | ⏳ not run | Needs macOS and Windows machines (P0.7 scaffolds the app) |
 | Capacitor plugins | ⏳ not run | Needs the Android SDK and a device |
@@ -123,16 +123,56 @@ the authenticated scripts below are still needed.
 
 ### GitHub (`forges/github.mjs`)
 
-Checks: CORS preflight for REST `PATCH` and GraphQL `POST` with an
-`authorization` header; `access-control-allow-origin` on real responses; that
-`x-ratelimit-*` headers are exposed; a 100-file tree → commit → ref update;
-one GraphQL query reading the 100 blobs by `object(oid:)` and its point cost;
-a stale-parent ref update with `force:false` returning 422; and two
-simultaneous fast-forwards where exactly one must win.
+Checks:
 
-Not run: this cloud session can't reach a scratch repo (the session's GitHub
-access is limited to the code repo, and probing other endpoints was not
-permitted). Run it locally with a throwaway repo.
+- CORS: preflights for REST `PATCH` and GraphQL `POST` with an
+  `authorization` header, `access-control-allow-origin` on real responses, and
+  exposed `x-ratelimit-*` headers.
+- **Empty repo** (the onboarding case, SYNC.md §8). It records what the git
+  data API does on an empty repo, then creates the first commit with the
+  contents API (`PUT /contents/lm-spike.json`).
+- A 100-file tree → commit → ref update using the real `.lmr` layout
+  (`r/<s1>/<s2>/<name>.lmr`) and the `Life Manager <noreply@invalid>` author.
+- Git blob SHAs computed locally match the tree for all 100 files.
+- One GraphQL query reading the 100 blobs by `object(oid:)`, and its point
+  cost. What GraphQL returns for a binary blob.
+- A 256 KiB binary `.lmb` round trip through `POST/GET /git/blobs`.
+- Delete via `sha: null` plus add-by-SHA in one commit, and whether the empty
+  directory disappears.
+- CAS:
+  - A same-parent race: the second update must get 422.
+  - A stale parent (the branch has moved to a descendant) must also get 422.
+  - 5 rounds of truly concurrent fast-forwards: exactly one wins each round.
+
+It writes `forges/github-result.json`, which contains no token.
+
+**Run 2026-10-10 from the cloud sandbox, partial.** The session proxy forbids
+REST writes (`git/blobs`, `git/trees`, `contents` PUT → 403), `OPTIONS`
+requests and GraphQL, so only the read side could be checked:
+
+- An empty repo returns **409 "Git Repository is empty."** from
+  `GET /git/ref/heads/main`. The transport must treat that as "empty repo",
+  not as an error.
+  - It's still unconfirmed whether the git data API accepts writes on an
+    empty repo. GitHub is known to return 409 there; if so, onboarding must
+    create `lm.json` with the contents API first. The owner's run will settle
+    this.
+- Read-only, against the code repo (196 entries):
+  - Locally computed git blob SHAs (SHA-1 of `blob <len>\0` + content)
+    matched GitHub's for 20/20 blobs read through `GET /git/blobs`.
+  - A non-recursive root → leaf tree walk reached the same SHA as the
+    recursive tree.
+  - About 260 ms per REST blob read, so blob reads must be batched through
+    GraphQL, as planned.
+- Authenticated responses carry `Access-Control-Allow-Origin: *` and expose
+  the rate-limit headers.
+
+**To finish it, run locally against a throwaway repo:**
+
+```sh
+cd spikes && pnpm install --ignore-workspace
+LM_TEST_GITHUB_TOKEN=github_pat_… LM_TEST_GITHUB_REPO=owner/throwaway pnpm github
+```
 
 ### GitLab (`forges/gitlab.mjs`)
 

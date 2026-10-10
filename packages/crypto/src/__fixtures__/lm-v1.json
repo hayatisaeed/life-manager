@@ -1,0 +1,24 @@
+{
+  "format": "life-manager",
+  "version": 1,
+  "kdf": {
+    "alg": "argon2id",
+    "opslimit": 1,
+    "memlimit": 8388608,
+    "salt": "uriZf6sbmhjiqoo/S2tUPw=="
+  },
+  "wrappedKeys": [
+    {
+      "kind": "passphrase",
+      "nonce": "dxhlf+n6WLTBwCiows/TFQSGu1wmFNHN",
+      "ct": "GTw12yFKQd8b97vC4yFuDKvlfSqoCX0AJbN27n+bF3jCWmVRhgE5/FrXyu3i6yPt"
+    },
+    {
+      "kind": "recovery",
+      "nonce": "VROTYN7Km9txO2V2ZnohNZkgUNZH+0hM",
+      "ct": "TLSLwDlV9/vRNZTEWY71nDpImS945dq7Oml5KKRNAP9Y0GHlakrjroJwEgNk86Ye"
+    }
+  ],
+  "keyCheck": "9NXKHN7Q65ue6SoV9Z2rYj7ZkBIOvjecm3RBz8RqJ+2i7ckFMbpB0+/FxYxklA/Kv/XP6A==",
+  "createdAt": "2026-10-10"
+}

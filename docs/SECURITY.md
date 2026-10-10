@@ -23,18 +23,29 @@ implement our own primitives.
 
 | Use | Primitive |
 |---|---|
-| Passphrase → key-encryption key | Argon2id (`crypto_pwhash`); ops 3, mem 256 MiB on desktop, 64 MiB on mobile/web; the parameters are stored in `lm.json` |
+| Passphrase → key-encryption key | Argon2id (`crypto_pwhash`, `ALG_ARGON2ID13`). **One setting per repo**, stored in `lm.json` and chosen by the device that creates the repo. Default ops 3, mem 256 MiB (ADR-016). Accepted range when reading `lm.json`: ops 1–10, mem 8 MiB–1 GiB. Passphrases are NFKC-normalized, then UTF-8 encoded |
 | Record and blob encryption | XChaCha20-Poly1305 IETF with random 24-byte nonces |
-| Key wrapping | XChaCha20-Poly1305 |
+| Key wrapping | XChaCha20-Poly1305. The passphrase wrap uses the Argon2id output as the key; the recovery wrap uses the recovery key directly (it's already 256 random bits) |
 | File names | BLAKE2b-256 keyed with `pathKey` |
-| Sub-keys | `crypto_kdf_derive_from_key(dataKey)` with contexts `"lm-rec1"`, `"lm-blob"`, `"lm-path"`, `"lm-locl"` |
-| Recovery key | 256 random bits, shown as 24 words (BIP-39 English list) or as a base32 grouped string |
+| Sub-keys | `crypto_kdf_derive_from_key(32, id = 1, ctx, dataKey)` with contexts `"lm-rec1"` (records), `"lm-blob"` (blobs), `"lm-path"` (file names), `"lm-locl"` (device-local secrets) and `"lm-chk1"` (the `lm.json` key check). Each context is 7 ASCII bytes plus one NUL byte, because libsodium needs exactly 8 (ADR-017) |
+| Recovery key | 256 random bits. Shown as 24 words (BIP-39 English list, with the standard checksum) or as 56 Crockford base32 characters in groups of 4 (key ‖ the first 3 bytes of BLAKE2b-256(key) as a checksum). Both forms are accepted on input |
 
 **Associated data:**
 
 - Records: `"lmr1|" + recordId`.
-- Blobs: `"lmb1|" + contentHash`.
+- Blobs: `"lmb1|" + contentHash`, where `contentHash` is hex BLAKE2b-256 of
+  the plaintext.
 - Wrapped keys: `"lmk1|" + kind`.
+- Key check: `"lmc1|key-check"`.
+
+**Encodings in `lm.json`:** standard base64 with padding. `nonce` and `ct`
+are the AEAD nonce and ciphertext‖tag. `keyCheck` is base64(nonce ‖ ct) of
+the constant `lm-key-check`, sealed with the `"lm-chk1"` sub-key.
+
+**Implementation:** `packages/crypto` is the only code that touches these
+primitives. Its known-answer tests pin the derived keys, file names and a v1
+`lm.json` fixture. A change that breaks them is a data-format change and
+needs an ADR.
 
 ## 3. Key lifecycle
 

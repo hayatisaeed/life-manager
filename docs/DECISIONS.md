@@ -286,3 +286,63 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
     rule.
   - Jalali rules are limited to Gregorian years 560–3798.
 
+### ADR-016 — Argon2id parameters are per repo
+2026-10-10 · accepted (owner)
+
+- **Context:** SECURITY.md §2 said 256 MiB on desktop and 64 MiB on
+  mobile/web. But `lm.json` has a single `kdf` block, so whichever device
+  creates the repo fixes the parameters for every device. The P0.2 spike
+  measured ops 3 / 256 MiB at about 0.8 s in Chromium wasm on a desktop-class
+  CPU.
+- **Decision:**
+  - One Argon2id setting per repo, stored in `lm.json`.
+  - The default is ops 3 / 256 MiB on every platform.
+  - If the pending Android measurement (P0.2) exceeds about 3 s, the default
+    drops to 128 MiB. Existing repos keep their parameters until the next
+    passphrase change, which may set new ones (`rewrapPassphrase`).
+  - Readers accept ops 1–10 and mem 8 MiB–1 GiB. That bounds what a tampered
+    `lm.json` can make a device allocate.
+- **Consequences:**
+  - A phone joining a desktop-created repo runs the 256 MiB derivation once
+    per unlock. Native apps keep the data key in the keychain, so that's rare.
+  - The derivation blocks the calling thread for about a second. The web
+    unlock flow should run it in a worker (P0.7).
+  - Rejected alternative: one wrapped key per KDF setting. It adds a weaker
+    wrap that an attacker would target.
+
+### ADR-017 — Crypto encodings and libraries
+2026-10-10 · accepted
+
+- **Context:** P0.4 needed byte-exact definitions that SECURITY.md left open,
+  and one spec error came to light: libsodium's `crypto_kdf` takes exactly 8
+  context bytes, but the documented contexts are 7 characters.
+- **Decision:**
+  - **Sub-key contexts:** keep the documented names and pad each with a NUL
+    byte. That's what a C or Rust caller passing the same string literal
+    gets. Subkey id 1. The `lm.json` key check gets its own context,
+    `"lm-chk1"`, so the data key itself encrypts nothing.
+  - **Recovery key:**
+    - The words are standard BIP-39 for 256-bit entropy, via
+      `@scure/bip39`: audited, small, built on `@noble/hashes`.
+    - The base32 form is Crockford base32 of key ‖ 3 checksum bytes
+      (BLAKE2b-256 prefix): 56 characters in groups of 4. On input `O` reads
+      as 0 and `I`/`L` as 1.
+    - The recovery key is the wrap key directly; no KDF is needed for 256
+      random bits.
+  - **Passphrases are NFKC-normalized**, so compatibility forms such as
+    Arabic presentation forms derive the same key.
+  - **Blob names** hash the content hash as hex text, the same way record
+    names hash the id string.
+  - **`lm.json` parsing** is a zod schema that keeps unknown fields. A newer
+    `version` returns `unsupported-version`.
+  - **Errors:** every failure is an `LmCryptoError` with a fixed code and
+    message, and never contains secret material.
+  - **Test-only dependencies:** `@noble/hashes` and `@noble/ciphers`. They are
+    an independent implementation that cross-checks the Argon2id, BLAKE2b,
+    `crypto_kdf` and XChaCha20-Poly1305 outputs.
+- **Consequences:**
+  - The known-answer tests pin the derived keys, paths and a v1 `lm.json`
+    fixture. Changing any of them breaks existing repos, so it needs a new
+    format version.
+  - Long blobs (up to 50 MB) are sealed in one shot, in memory. Streaming
+    (`secretstream`) would need a new `LMB2` format.
