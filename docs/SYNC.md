@@ -65,11 +65,23 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
   "type": "task",
   "schema": 1,
   "hlc": "2026-10-09T10:15:00.000Z-0003-devA",
-  "fieldHlc": { "title": "…", "dueAt": "…" },
+  "fieldHlc": { "title": "…", "dueDate": "…" },
   "deletedAt": null,
-  "data": { "title": "Call mom", "dueAt": "2026-10-10", "tags": ["family"] }
+  "createdAt": "2026-10-09T10:14:58.120Z",
+  "data": { "title": "Call mom", "dueDate": "2026-10-10", "tags": ["01J9...TAG"], "…": "…" }
 }
 ```
+
+- **Decoding** (`decodeRecord` in `@lm/core`, ADR-013):
+  1. Validate the envelope.
+  2. Upgrade `data` and `fieldHlc` to the current schema.
+  3. Validate `data` against the entity's zod schema.
+- **Records that fail to decode are kept.** A record that fails any step is
+  returned as `kept`, with one of these reasons: `malformedEnvelope`,
+  `unknownType`, `futureSchema`, `upgradeFailed` or `invalidData`. The engine
+  stores it untouched and never deletes it.
+- **Unknown top-level keys are carried along.** The envelope is a loose
+  object, so keys added by a newer client survive a round-trip.
 
 - The AEAD associated data is `"lmr1|" + id`. A file moved to another record's
   path therefore fails to decrypt, and the engine skips it and logs an error.
