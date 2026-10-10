@@ -8,7 +8,8 @@
     "sqlite": "node sqlite-opfs/run.mjs",
     "argon2": "node argon2/run.mjs",
     "github": "node forges/github.mjs",
-    "gitlab": "node forges/gitlab.mjs"
+    "gitlab": "node forges/gitlab.mjs",
+    "preflight": "node forges/preflight.mjs"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.4-build2",
