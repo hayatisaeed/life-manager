@@ -23,7 +23,9 @@ export const ALLOWED = {
     '@lm/i18n',
     '@lm/platform',
   ],
-  '@lm/web': ['@lm/ui', '@lm/platform'],
+  // The web app also starts @lm/db's SQLite worker, which must be bundled as
+  // its own entry (ADR-021).
+  '@lm/web': ['@lm/ui', '@lm/platform', '@lm/db'],
   '@lm/desktop': ['@lm/ui', '@lm/platform', '@lm/web'],
   '@lm/mobile': ['@lm/ui', '@lm/platform', '@lm/web'],
 };

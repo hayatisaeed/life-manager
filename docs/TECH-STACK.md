@@ -21,12 +21,15 @@ this list needs an entry in [DECISIONS.md](DECISIONS.md).
 | Styling | Tailwind CSS v4 + CSS variables (tokens) | |
 | Primitives | Radix UI | |
 | Icons | lucide-react | |
+| Fonts | @fontsource-variable/inter, @fontsource-variable/vazirmatn | bundled locally (DESIGN.md §3) |
+| Class names | clsx | |
+| Accessibility checks | @axe-core/playwright | every web e2e test, WCAG 2 A/AA |
 | Drag and drop | dnd-kit | |
 | Charts | visx | token-driven theming, RTL control |
 | Markdown editor | CodeMirror 6 (markdown mode, live preview decorations) | stores plain Markdown |
 | Markdown render | remark/rehype + DOMPurify | |
 | Validation / schemas | zod | |
-| Dates | date-fns + date-fns-jalali, @internationalized/date for time zones | `core` recurrence uses `jalaali-js` (pure Julian-day-number conversions, no `Date`), ADR-015 |
+| Dates | `Intl.DateTimeFormat` (`persian` calendar, `arabext` digits) for display (ADR-021); date-fns + date-fns-jalali and @internationalized/date only once UI date maths needs them | `core` recurrence uses `jalaali-js` (pure Julian-day-number conversions, no `Date`), ADR-015 |
 | i18n | i18next + react-i18next | |
 | IDs / clocks | `ulid`, own HLC implementation in `core` | ULID entropy and HLC time come from the injected `Rng` and `Clock` |
 | Order keys | `fractional-indexing` | base-62 keys, compared by code unit (ADR-012) |

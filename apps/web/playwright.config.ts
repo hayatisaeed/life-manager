@@ -15,10 +15,26 @@ export default defineConfig({
     trace: 'retain-on-failure',
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
-  // Every feature is checked in both themes and both directions (docs/DESIGN.md).
+  // Every feature is checked in both themes and both directions (DESIGN.md).
+  // RTL comes from a Persian browser language, which the app picks up on a
+  // fresh install before any settings exist.
   projects: [
-    { name: 'light-ltr', use: { ...devices['Desktop Chrome'], colorScheme: 'light' } },
-    { name: 'dark-ltr', use: { ...devices['Desktop Chrome'], colorScheme: 'dark' } },
+    {
+      name: 'light-ltr',
+      use: { ...devices['Desktop Chrome'], colorScheme: 'light', locale: 'en-US' },
+    },
+    {
+      name: 'dark-ltr',
+      use: { ...devices['Desktop Chrome'], colorScheme: 'dark', locale: 'en-US' },
+    },
+    {
+      name: 'light-rtl',
+      use: { ...devices['Desktop Chrome'], colorScheme: 'light', locale: 'fa-IR' },
+    },
+    {
+      name: 'dark-rtl',
+      use: { ...devices['Desktop Chrome'], colorScheme: 'dark', locale: 'fa-IR' },
+    },
   ],
   webServer: {
     command: 'pnpm build && pnpm preview',

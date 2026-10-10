@@ -1,7 +1,8 @@
 // Test helpers: simulated devices sharing one fake forge.
 import type { EntityData, Rng } from '@lm/core';
 import { deriveSubKeys, initCrypto, type DataKey, type SubKeys } from '@lm/crypto';
-import { LmDatabase, openMemoryDriver, type SqlDriver } from '@lm/db';
+import { LmDatabase, type SqlDriver } from '@lm/db';
+import { openMemoryDriver } from '@lm/db/memory';
 import { SyncEngine, type SyncEngineOptions } from '../engine';
 import { FakeForge, type FakeForgeHooks, type FakeForgeOptions } from '../fake-forge';
 import type { SyncTransport } from '../transport';

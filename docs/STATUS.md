@@ -12,7 +12,7 @@ short and current. Add new log entries at the top.
     - P0.4 Crypto (ADR-016, ADR-017, and ADR-019's format fix);
     - P0.5 Local DB (ADR-018). Its manual check of the desktop and mobile
       drivers is still pending.
-  - **P0.6 Sync engine: code complete, AC open** (ADR-020, ADR-021).
+  - **P0.6 Sync engine: code complete, AC open** (ADR-020, ADR-022).
     - Done:
       - the transport interface;
       - the fake forge (branch and per-file CAS);
@@ -30,9 +30,23 @@ short and current. Add new log entries at the top.
     - GitHub: read-side checks pass; the write/CAS/GraphQL script waits for
       the owner's local run.
     - Not run: GitLab, Tauri, Capacitor.
+  - **P0.7 App shells has started** (ADR-021). Done:
+    - i18n (en/fa) with RTL switching;
+    - calendar-system and digits settings;
+    - design tokens, themes and bundled fonts;
+    - base components with Ladle stories;
+    - the app layout (sidebar and bottom tabs);
+    - Today and Settings screens;
+    - the web app booting on the real database, with one owner tab.
 - **Next:**
-  - **P0.7 App shells.** Onboarding can now use the real transports
-    (`GitHubTransport`, `GitLabTransport`) with `platform.http` as `fetch`.
+  - **P0.7 part 2.** The transports are ready; pass `platform.http` as
+    `fetch`.
+    - `platform.http` and `platform.secrets`;
+    - the onboarding wizard (local-only / new repo / join);
+    - the Settings → Sync page;
+    - a live sync status.
+  - **P0.7 part 3** (needs the Tauri/Capacitor spikes and native tooling):
+    the desktop and mobile shells, and the remaining platform adapters.
   - Close P0.6 once the owner's real-forge runs pass (below).
 - **Blockers / needs owner input:**
   - **GitHub spike: the owner needs to run `pnpm github` locally** (see
@@ -43,7 +57,7 @@ short and current. Add new log entries at the top.
     `LM_TEST_GITHUB_TOKEN=… LM_TEST_GITHUB_REPO=owner/name pnpm --filter
     @lm/sync exec vitest run src/contract.test.ts` (and
     `LM_TEST_GITLAB_TOKEN`, `LM_TEST_GITLAB_PROJECT` for GitLab). Behind a
-    proxy, Node needs `NODE_USE_ENV_PROXY=1`. ADR-021 lists what they
+    proxy, Node needs `NODE_USE_ENV_PROXY=1`. ADR-022 lists what they
     settle.
 - **Known risks:**
   - **Tauri SQL transactions** (ADR-018): `tauri-plugin-sql` uses a
@@ -51,7 +65,7 @@ short and current. Add new log entries at the top.
     Tauri spike must check this before P0.7.
   - GitLab's per-file CAS (`last_commit_id`) and its 400 messages, GitHub's
     first commit through the contents API, and the rate-limit headers' CORS
-    exposure are built from the docs, not verified (ADR-021). The
+    exposure are built from the docs, not verified (ADR-022). The
     archive-download CORS is still unverified; the transport doesn't use
     the archive yet.
   - API rate limits during the first sync of large repos.
@@ -66,7 +80,8 @@ short and current. Add new log entries at the top.
   - the Tauri and Capacitor SQL drivers on real devices, including FTS5 in
     their SQLite builds;
   - OPFS `createWritable` in Safari;
-  - the nightly workflow (it first runs after merge).
+  - the nightly workflow (it first runs after merge);
+  - the UI on real phones and Safari (checked in headless Chromium only).
 
 ## Handoff notes for the next session
 
@@ -125,6 +140,23 @@ the spike stays unchecked until the owner's results are in.
   bundle is 223 KB gzipped).
 - Still to build in P0.7: the web "unlock for 7 days" wrap and the `lm-locl`
   secret store.
+
+**P0.7 UI, for whoever builds the next screens:**
+
+- Add a screen under `packages/ui/src/features/<name>/`, with an `i18n.ts`
+  holding `xEn` and `xFa: typeof xEn`.
+  - Register the catalogs in `app/resources.ts` and the route in
+    `app/router.tsx`.
+  - Add a nav entry in `layout/AppShell.tsx` only when the screen exists.
+- Use only semantic Tailwind colors (`bg-bg`, `text-text-muted`,
+  `bg-accent`, …); the default palette is removed. Use logical properties
+  only.
+- Read settings and locale through `useApp()`. Format every date, number and
+  amount through `@lm/i18n`.
+- Every web e2e test runs in 4 projects (light/dark × en/fa) and should call
+  `expectNoA11yViolations`.
+- Import the in-memory test driver from `@lm/db/memory`, and attachments
+  from `@lm/db/attachments` (keeps the app bundle lean, ADR-021).
 
 **P0.6 sync, for P0.7:**
 
@@ -185,7 +217,7 @@ the spike stays unchecked until the owner's results are in.
     and offset-paged trees.
   - Shared `http.ts`: errors, rate-limit tracking, zod parsing, base64,
     bounded concurrency.
-- **Interface change (ADR-021):** `commit` may return `{ sha, rebased: true }`
+- **Interface change (ADR-022):** `commit` may return `{ sha, rebased: true }`
   (GitLab). The engine then keeps the pulled head as `lastSyncedCommit`, so
   it doesn't skip the other devices' commits underneath its own.
   `FakeForge({ cas: 'perFile' })` models this, and the simulator runs every
@@ -202,11 +234,48 @@ the spike stays unchecked until the owner's results are in.
 - **Surprises:**
   - A test caught a wrong GitHub Enterprise GraphQL URL (`/apigraphql`)
     before it shipped.
-  - `@lm/core`'s property tests time out at Vitest's 5 s default when every
-    package tests in parallel on 4 cores. This happens on main too. Raised
-    core's `testTimeout` to 60 s; the assertions are unchanged.
+  - `@lm/core`'s property tests timed out at Vitest's 5 s default when every
+    package tests in parallel. PR #15 fixed this on main (a 30 s timeout)
+    while this branch was open; the merge keeps that fix.
 - **Unverified:** everything against real forges (see Blockers). Nothing
   platform-specific was touched.
+### 2026-10-10 — P0.7 part 1: UI foundation, i18n, web boot
+- **`@lm/i18n`:**
+  - languages and direction;
+  - an `Intl`-based date formatter for either calendar, with Latin or
+    Persian digits (Persian full dates fixed to weekday-first);
+  - numbers, and money from integer minor units, formatted exactly;
+  - `todayIn(clock, timeZone)`; i18next setup.
+  - 8 tests, 100% coverage.
+- **`@lm/ui`:**
+  - tokens and the Tailwind v4 theme, with bundled Inter and Vazirmatn;
+  - the theme hook (system/light/dark);
+  - Button, Switch, SegmentedControl, Select, EmptyState and SyncPill, with
+    Ladle stories (light/dark, LTR/RTL);
+  - AppShell (sidebar and bottom tabs) and hash routing;
+  - Today (greeting and date in the user's calendar) and Settings
+    (language, calendar, week start, digits, theme, sync note);
+  - a settings store on the synced record;
+  - `Boot` (Web Lock owner, retrying open, takeover).
+  - 14 tests.
+- **`@lm/platform`:** `claimOwnership` (Web Locks) and `cryptoRng`.
+- **`apps/web`:** boots `Boot` with the SQLite worker on OPFS. The e2e suite
+  covers boot, settings surviving a reload, and two-tab takeover, with axe,
+  in light/dark × LTR/RTL: 12 passing.
+- **Surprises:**
+  - Two quick settings changes raced to create the settings record and one
+    was lost. Writes are now serialized and optimistic.
+  - The e2e suite then caught a flicker: a live-query result from an
+    earlier write briefly undid a later change. Unsaved changes now stay
+    layered over the database value until written. A unit test covers it.
+  - Under parallel `pnpm test` load, `core`'s property tests ran 7–9 s,
+    past Vitest's 5 s default. `core` now allows 30 s per test; the runs and
+    assertions are unchanged.
+  - The boot screen flashed light and LTR on dark Persian devices; fixed.
+  - The sqlite-wasm loader and libsodium were in the main bundle; they're
+    now behind `@lm/db/memory` and `@lm/db/attachments`.
+- **Checked visually** in headless Chromium (desktop and phone sizes, light
+  English and dark Persian). Real phones and Safari are not checked.
 
 ### 2026-10-10 — P0.6 part 1: sync engine, fake forge, simulator
 - **Spec contradiction, fixed with the owner (ADR-019).** Records were bound
@@ -229,7 +298,7 @@ the spike stays unchecked until the owner's results are in.
   - 23 engine and forge tests, 97.6% branch coverage;
   - the simulator: 6 seeds × 300 ops in CI, with an assertion that real CAS
     races occurred.
-  - Locally, 40 seeds × 1,000 ops all converged; a 1,000-seed × 300-op run was in progress at commit time.
+  - Locally, 40 seeds × 1,000 ops and 1,000 seeds × 300 ops (seeds 1000–1999, 22 minutes) all converged.
   - A deliberately broken merge made the simulator fail, as it should.
   - Nightly workflow: 1,000 seeds × 1,000 ops in 10 shards.
 - **Surprise:** the first Merkle-walk version kept stale snapshot entries

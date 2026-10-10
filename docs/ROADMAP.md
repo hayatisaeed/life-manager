@@ -86,7 +86,7 @@ desktop and mobile drivers are checked manually.
 - [x] `SyncTransport` interface + fake forge
 - [x] Sync cycle (SYNC.md §5), Merkle diff, batching, backoff, rate-limit
   tracking, lock
-- [x] GitHub transport; GitLab transport (ADR-021; run against emulators in
+- [x] GitHub transport; GitLab transport (ADR-022; run against emulators in
   CI, not yet against the real forges)
 - [x] **Convergence simulator:** 5 devices × 1,000 random operations, random
   sync order, must reach identical state. Runs in CI (short) and nightly
@@ -102,9 +102,9 @@ GitHub and on GitLab.
 - [ ] `packages/platform` interfaces + implementations (sql, http, secrets,
   notifications, files, audio, deep links)
 - [ ] `apps/web`, `apps/desktop` and `apps/mobile` boot the same UI
-- [ ] Design tokens, theme switcher (system/light/dark), fonts, base
+- [x] Design tokens, theme switcher (system/light/dark), fonts, base
   components, app layout (sidebar / bottom tabs)
-- [ ] i18n (en/fa), RTL switching, calendar-system and digits settings
+- [x] i18n (en/fa), RTL switching, calendar-system and digits settings
 - [ ] Onboarding wizard (SYNC.md §8): local-only, create a new repo, or join an
   existing repo; Settings → Sync page; sync status pill
 
