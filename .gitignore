@@ -23,3 +23,6 @@ apps/mobile/ios/
 
 # Spikes may contain local tokens in config; keep code only
 spikes/**/.env*
+
+# Local package manager cache
+.pnpm-store/

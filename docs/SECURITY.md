@@ -32,9 +32,14 @@ implement our own primitives.
 
 **Associated data:**
 
-- Records: `"lmr1|" + recordId`.
+- Records: `"lmr1|" + opaqueRemotePath`; verify the decrypted ID maps to that
+  path before accepting it (ADR-011).
 - Blobs: `"lmb1|" + contentHash`.
 - Wrapped keys: `"lmk1|" + kind`.
+
+KDF contexts above are NUL-padded to exactly eight bytes, with subkey ID 1
+per context (ADR-012). Recovery strings use RFC 4648 base32, grouped in four
+characters with no padding; nonzero trailing bits are rejected.
 
 ## 3. Key lifecycle
 

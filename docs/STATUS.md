@@ -5,20 +5,68 @@ short and current. Add new log entries at the top.
 
 ## Current state
 
-- **Phase:** 0 (foundations). **P0.1 Monorepo & tooling is done.**
-- **Next milestone:** **P0.2 Spikes.** Start with the GitHub/GitLab API spikes,
-  the highest-risk item, before building `packages/sync`. Spike code goes under
-  `spikes/`; add `spikes/**` to the ESLint ignores if it gets in the way.
-- **Blockers / needs owner input:** none.
-- **Known risks:**
-  - GitLab commit concurrency (`last_commit_id`) and archive-download CORS
-    have not been verified yet.
-  - API rate limits during the first sync of large repos.
-- **Unverified:** the CI workflow has not run on GitHub yet; it will run on the
-  first PR. Locally verified: `pnpm check`, `pnpm build`, `pnpm test:e2e`, and
-  the Ladle build.
+- **Phase:** 0 foundations plus an early local web feature slice. P0.1 remains
+  complete; later milestones are partially implemented, not release-ready.
+- **Implemented:** core IDs/clocks/order, 45 domain schemas (Settings preserved
+  pending its complete schema), recurrence in both calendars, scalar/set/ordered
+  merges and causal long-text provenance; libsodium vault/record/blob wrappers;
+  SQLite worker OPFS persistence, migrations, FTS5, HLC/change log, CRUD,
+  tombstones/undo, live-query subscription and JSON export.
+- **Usable web screens:** Today, Inbox capture/conversion, Tasks, Projects, local
+  Events, daily boolean Habits, Focus sessions, Accounts/Transactions, Health and
+  Journal logs, Notes, People, Resources, Assets, manual Goals and Settings.
+  These are minimal slices, not completed feature phases.
+- **Next work:** P0.2 external/native spikes, complete P0.3 coverage/schema
+  acceptance, native DB/platform adapters, encrypted attachment persistence,
+  sync transports/cycle/simulator and full onboarding; then finish domain UIs.
+- **Publication method:** the owner explicitly authorized signed-in GitHub
+  browser publication on 2026-10-13. Browser branch creation and commits work.
+  Terminal Git credentials and connector write access remain unavailable;
+  browser publication replaces the earlier access blocker.
+- **Blockers / external validation:** no dedicated forge test repositories/tokens
+  supplied for authenticated CAS/CORS contract tests. `cargo` and `adb` are not
+  available on this host. Windows/Android packaging and mobile KDF timing cannot
+  be verified here. No owner's live data repo has been used for tests.
+- **Known gaps:** sync, AI, external calendars, PWA offline shell caching,
+  notifications, native shells, importers, advanced planner/time blocking,
+  budgets, streaks, routines, flashcards, document vault and insights remain
+  unfinished. Date entry is Gregorian; date display can be Jalali. Notes use a
+  plain textarea. Mobile navigation is a scrollable strip. Text-version graph
+  pruning remains unspecified. Required 100% branch coverage and all primitive
+  known-answer vectors are not yet established.
+- **Verified locally:** `pnpm check` (86 unit tests), production web build,
+  `pnpm test:e2e` (16 tests in light/dark and en/fa), persisted data after reload,
+  the Ladle story build, and page overflow checks at 1440/768/390/320px. Browser visual review covered
+  English light desktop, Persian dark phone, and tablet layouts. Native
+  platforms, the full sync simulator, network integrations, accessibility axe
+  checks and installer distribution are unverified.
 
 ## Session log
+
+### 2026-10-13 — Domain foundations and persistent local web workspace
+- Cloned the remote project into the empty local workspace and implemented a
+  broad local slice at the owner's request to code the project in one pass.
+- Added deterministic primitives, entity validation/upgrades with preservation,
+  Gregorian/Jalali recurrence and tested merges. Five-replica text tests run 1,000
+  random delivery orders including stale resends; this is not the full sync
+  convergence simulator.
+- Fixed two sync-spec problems with explicit owner approval: bind record AEAD to
+  the opaque remote path so a new device can decrypt; retain causal original
+  text versions to avoid order-dependent diff3 conflict nesting (ADR-011/013).
+- Added libsodium key derivation, recovery encoding, vault create/unlock/rewrap,
+  authenticated codecs, tamper/relocation tests and a keyed BLAKE2b vector.
+- Added SQLite WASM OPFS worker storage, serial transactions, migration 1,
+  query views, FTS5, record preservation, change-log writes and live updates.
+- Replaced the placeholder with working local screens, locally bundled fonts,
+  en/fa catalogs, RTL, light/dark/system themes, calendar/digit preferences,
+  delete/undo, focus-session recording and plain JSON export.
+- Checks passed: lint/format/typecheck/unit tests, production web build and all
+  16 Playwright tests. Reviewed rendered desktop/tablet/phone layouts. Fixed the
+  account selector's accessible label, optional date clearing, local event time
+  editing and the ULID library's ambient-time fallback at epoch zero.
+- Remaining scope and external blockers are listed above. No phase-wide or
+  cross-platform completion is claimed.
+
 
 ### 2026-10-09 — P0.1 Monorepo & tooling
 - Set up the pnpm + Turborepo workspace, with skeletons for every package in

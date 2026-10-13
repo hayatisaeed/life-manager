@@ -1,3 +1,6 @@
-// Pure domain logic: entities, services, recurrence, merge, HLC. No platform imports.
-// Implementation starts in Phase 0; see docs/ROADMAP.md.
-export {};
+export * from './clock';
+export * from './ids';
+export * from './entities';
+export * from './recurrence';
+export * from './merge';
+export * from './text-versions';

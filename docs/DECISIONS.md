@@ -120,3 +120,78 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
   - No stale `dist/` folders and no build ordering between packages.
   - A package must never rely on emit-only features (for example `const enum`
     across packages); `isolatedModules` and `verbatimModuleSyntax` guard this.
+
+### ADR-011 — Record authentication binds to the opaque remote path
+2026-10-13 · accepted by owner
+
+- **Context:** A joining device knows the keyed filename but cannot know the
+  plaintext record ID until it decrypts the record. Requiring that ID as AEAD
+  associated data made first sync impossible.
+- **Decision:** Records authenticate `lmr1|` followed by the full opaque remote
+  path. After decryption, the engine must verify the decrypted ID hashes to that
+  path before accepting the envelope. Attachment binding remains content-hash
+  based. No released data exists, so format version 1 can be corrected now.
+- **Consequences:** Fresh devices can decrypt discovered records while relocation
+  is rejected. Crypto and networking dependencies remain the specified libsodium
+  wrappers and zod boundary validation; no custom cryptographic primitives.
+
+### ADR-012 — Pure domain utilities and encoding details
+2026-10-13 · accepted
+
+- **Decision:** Use `@internationalized/date` CalendarDate arithmetic for both
+  Gregorian and Persian recurrence, `ulid` with injected randomness/time, and
+  `fractional-indexing` for lexicographic order keys. Use the specified
+  `node-diff3` for pairwise text merges and fast-check for randomized tests.
+- **Details:** HLC counter overflow carries one millisecond, never wraps. Native
+  libsodium KDF contexts are eight bytes: NUL-pad the seven-character names in
+  SECURITY.md; subkey ID is 1 for each separate context. Recovery strings use
+  uppercase RFC 4648 base32 with four-character groups and no padding.
+- **Consequences:** Core remains independent of the DOM, network and OS. No
+  security or sync network calls are introduced. The multi-device text merge
+  format remains under review because pairwise diff3 alone is not associative.
+
+### ADR-013 — Causal provenance for convergent long-text merges
+2026-10-13 · accepted by owner
+
+- **Context:** Pairwise diff3 retains text but is not associative: merging three
+  concurrent edits in different orders produces different nested conflict blocks.
+- **Decision:** Envelope `textVersions` maps each long-text field to an append-only
+  graph of `{clock,value,parents}` original edits. A local edit parents every
+  current head. Merge unions the graphs; rendering merges live heads in HLC order
+  against their newest common ancestor. Rendered conflict blocks are never stored
+  as new original edits unless the user explicitly edits them.
+- **Consequences:** Original versions remain available and stale resends cannot
+  revive superseded edits. Clock collisions or invalid ancestry are rejected for
+  preservation/reporting by sync, never silently discarded. Graph pruning awaits
+  a separately specified safe compaction protocol. The five-replica property test
+  covers 1,000 randomized delivery orders; this is not yet the full sync simulator.
+
+### ADR-014 — Initial SQLite record store and worker persistence
+2026-10-13 · accepted
+
+- **Decision:** Migration 1 stores validated envelopes in a normalized `records`
+  table, with per-entity SQL views, type/deletion indexes, FTS5, and sync
+  bookkeeping tables. Entity-specific generated columns/indexes can be added
+  through numbered migrations as query needs become concrete. This corrects the
+  earlier plan to duplicate the whole envelope into independent entity tables.
+- **Web driver:** Run SQLite WASM in a module worker using the official OPFS
+  synchronous-access-handle pool. Do not fall back silently to a transient DB.
+  Persistent-storage failures are shown in the app; another open tab can hold the
+  pool lock. The single driver serializes transactions and queries.
+- **Consequences:** One atomic write updates data, search, the HLC and change log.
+  Unknown/newer envelopes remain exportable and cannot be edited/deleted. Native
+  SQLite drivers and encrypted attachment storage are still outstanding.
+
+### ADR-015 — Deliver a working local web slice before connecting services
+2026-10-13 · accepted
+
+- **Context:** The owner requested implementation of the entire project in one
+  pass, overriding the default instruction to stay within one milestone.
+- **Decision:** Implement domain and crypto foundations alongside a local web
+  workspace. The UI exposes only working local actions and explicitly identifies
+  sync, AI, external calendars and native reminders as unavailable.
+- **Consequences:** Native date inputs currently use Gregorian dates, clearly
+  labelled; display supports Jalali independently. Initial notes are plain-text
+  editable, safely rendered as text. Mobile navigation is a scrollable navigation
+  strip until the planned bottom-tab shell arrives. No feature phase is marked
+  complete solely because a minimal CRUD screen exists.

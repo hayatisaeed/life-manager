@@ -66,13 +66,16 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
   "schema": 1,
   "hlc": "2026-10-09T10:15:00.000Z-0003-devA",
   "fieldHlc": { "title": "…", "dueAt": "…" },
+  "textVersions": {},
   "deletedAt": null,
   "data": { "title": "Call mom", "dueAt": "2026-10-10", "tags": ["family"] }
 }
 ```
 
-- The AEAD associated data is `"lmr1|" + id`. A file moved to another record's
-  path therefore fails to decrypt, and the engine skips it and logs an error.
+- The AEAD associated data is `"lmr1|" + remotePath` (ADR-011). A joining
+  device can decrypt before knowing the ID. After decryption, verify that the
+  ID maps to that exact keyed path. A relocated file fails authentication. The
+  engine preserves rejected ciphertext and reports an error.
 - **HLC format:** `ISO-millis-counter(4 hex)-deviceId`. These strings sort
   lexicographically in time order. Each device keeps one HLC; it is advanced on
   every local write and on receiving a remote HLC.
@@ -142,10 +145,15 @@ stay a plain linear history.
 | Scalar changed on both sides | The value with the higher `fieldHlc`; ties go to the lexicographically larger deviceId |
 | Set or array of ids (tags, links, participants) | `base + (oursAdded ∪ theirsAdded) − (oursRemoved ∪ theirsRemoved)` |
 | Ordered list (routine steps, checklist) | Merged by item id, using the scalar rule for order keys (fractional indexing) |
-| Long text (`body`, `notes`, `content`) | diff3. On overlapping hunks, keep both versions in a fenced conflict block and set `hasConflict = true`; the UI shows a banner |
+| Long text (`body`, `notes`, `content`) | Union original edit graphs (`textVersions`, ADR-013), render live heads in HLC order using diff3 against their newest common ancestor. Overlapping hunks keep both versions in fenced conflict blocks and set `hasConflict = true` |
 | Deleted on one side, edited on the other | The edit wins and the record is undeleted. A toast reports "restored" |
 | Deleted on both sides | Deleted |
 | No base (both created with the same id) | Impossible with ULIDs. Treat as a scalar merge with an empty base |
+
+Long-text metadata stores `{clock,value,parents}` per original edit. Local
+text writes must call `editText` so the new version supersedes every current
+head. The graph is append-only until safe compaction is specified. Invalid
+ancestry and clock collisions are preserved as sync problems.
 
 **Properties:** the rules must be commutative and idempotent. The convergence
 simulator checks both.

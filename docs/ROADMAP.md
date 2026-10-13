@@ -53,7 +53,7 @@ clean clone and in CI.
 ADR and reflected in SYNC.md.
 
 ### P0.3 Core primitives (`packages/core`)
-- [ ] ULID, HLC (with tests for monotonicity and remote receive), fractional
+- [x] ULID, HLC (with tests for monotonicity and remote receive), fractional
   indexing
 - [ ] Envelope + zod entity schemas for **all** entities in DATA-MODEL.md, with
   schema versions and the upgrader framework
@@ -65,9 +65,9 @@ ADR and reflected in SYNC.md.
 **AC:** 100% branch coverage on merge, HLC and recurrence.
 
 ### P0.4 Crypto (`packages/crypto`)
-- [ ] KDF, AEAD, keyed hash, sub-key derivation, recovery key encode/decode
-- [ ] `lm.json` create, unlock and rewrap
-- [ ] Record and blob codecs with associated-data binding
+- [x] KDF, AEAD, keyed hash, sub-key derivation, recovery key encode/decode
+- [x] `lm.json` create, unlock and rewrap
+- [x] Record and blob codecs with associated-data binding
 
 **AC:** Known-answer tests pass. Tampered, relocated or truncated files are
 rejected.
@@ -221,3 +221,16 @@ fire on desktop and Android.
 - iOS build (Capacitor). Generic git transport (Gitea/SSH). Settings sync of
   secrets. Shared lists with other users. Wear OS and tablet layouts. Apple
   Health and Health Connect import.
+
+## Implementation note — 2026-10-13
+
+A local web workspace now provides minimal capture, tasks/projects, events, daily
+boolean habits, focus sessions, accounts/transactions, health/journal logs, notes,
+people, resources, assets and manual goals. These are partial feature slices,
+not completion of their respective milestones. Gregorian date entry, Jalali
+display, en/fa, themes, SQLite OPFS persistence, tombstones/undo and JSON export
+work. Core schemas omit Settings pending P0.7. Pairwise and five-replica text
+merge tests exist; the full sync convergence simulator and required coverage
+acceptance remain outstanding. P0.2 external/native spikes require separate
+validation. Crypto codecs are implemented but the complete primitive vector
+suite and mobile Argon2id timing are not yet verified.
