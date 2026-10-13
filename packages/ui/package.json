@@ -14,6 +14,8 @@
     "stories:build": "ladle build"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/vazirmatn": "^5.3.0",
     "@lm/ai": "workspace:*",
     "@lm/calendar": "workspace:*",
     "@lm/core": "workspace:*",
@@ -21,7 +23,9 @@
     "@lm/i18n": "workspace:*",
     "@lm/importers": "workspace:*",
     "@lm/platform": "workspace:*",
-    "@lm/sync": "workspace:*"
+    "@lm/sync": "workspace:*",
+    "lucide-react": "^1.56.0",
+    "tailwindcss": "^4.3.3"
   },
   "peerDependencies": {
     "react": "^19.0.0",
