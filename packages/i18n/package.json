@@ -10,5 +10,10 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@internationalized/date": "^3.12.4",
+    "i18next": "^26.4.4",
+    "react-i18next": "^17.0.16"
   }
 }
