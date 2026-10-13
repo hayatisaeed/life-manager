@@ -19,6 +19,8 @@ export default defineConfig({
   projects: [
     { name: 'light-ltr', use: { ...devices['Desktop Chrome'], colorScheme: 'light' } },
     { name: 'dark-ltr', use: { ...devices['Desktop Chrome'], colorScheme: 'dark' } },
+    { name: 'light-rtl', use: { ...devices['Desktop Chrome'], colorScheme: 'light' } },
+    { name: 'dark-rtl', use: { ...devices['Desktop Chrome'], colorScheme: 'dark' } },
   ],
   webServer: {
     command: 'pnpm build && pnpm preview',
