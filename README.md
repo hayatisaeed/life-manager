@@ -41,7 +41,8 @@ pnpm stories      # component stories (Ladle)
 | [SYNC](docs/SYNC.md) | Encrypted GitHub/GitLab sync protocol |
 | [SECURITY](docs/SECURITY.md) | Threat model and cryptography |
 | [DATA-MODEL](docs/DATA-MODEL.md) | Entities and fields |
-| [DESIGN](docs/DESIGN.md) | Visual design system |
+| [DESIGN](docs/DESIGN.md) | Visual design system and workflow requirements |
+| [UX-RESEARCH](docs/UX-RESEARCH.md) | UI/UX findings, feature opportunities and priorities |
 | [TECH-STACK](docs/TECH-STACK.md) | Libraries and tools |
 | [RELEASE](docs/RELEASE.md) | Building, signing, distributing installers |
 | [DECISIONS](docs/DECISIONS.md) | Architecture decision log |

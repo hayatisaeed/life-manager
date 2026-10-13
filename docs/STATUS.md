@@ -16,6 +16,10 @@ short and current. Add new log entries at the top.
   Events, daily boolean Habits, Focus sessions, Accounts/Transactions, Health and
   Journal logs, Notes, People, Resources, Assets, manual Goals and Settings.
   These are minimal slices, not completed feature phases.
+- **Research:** [UX-RESEARCH.md](UX-RESEARCH.md) records 18 UI/UX findings and
+  24 feature opportunities from source/browser inspection and primary sources.
+  Priorities are continuity/recovery, the daily planning loop, then module depth;
+  research is complete, implementation is still pending.
 - **Next work:** P0.2 external/native spikes, complete P0.3 coverage/schema
   acceptance, native DB/platform adapters, encrypted attachment persistence,
   sync transports/cycle/simulator and full onboarding; then finish domain UIs.
@@ -27,6 +31,11 @@ short and current. Add new log entries at the top.
   supplied for authenticated CAS/CORS contract tests. `cargo` and `adb` are not
   available on this host. Windows/Android packaging and mobile KDF timing cannot
   be verified here. No owner's live data repo has been used for tests.
+- **UX risks reproduced:** unsaved editor drafts disappear on navigation;
+  active focus sessions reset when leaving Focus; Today includes undated
+  backlog; invalid priority produces a generic save error. Mobile hides local
+  status and later navigation destinations sit off-screen. Export has no restore
+  UI. DESIGN and ROADMAP now contain targeted acceptance requirements.
 - **Known gaps:** sync, AI, external calendars, PWA offline shell caching,
   notifications, native shells, importers, advanced planner/time blocking,
   budgets, streaks, routines, flashcards, document vault and insights remain
@@ -42,6 +51,28 @@ short and current. Add new log entries at the top.
   checks and installer distribution are unverified.
 
 ## Session log
+
+### 2026-10-13 — UI/UX audit and feature research
+- Audited source/specs and the running local app in the internal browser with
+  synthetic data: English light desktop, Persian dark phone and English dark
+  tablet. Reproduced draft loss, focus reset, undated Today behavior and generic
+  priority validation; inspected onboarding, Planner and recovery controls.
+- Added UX-RESEARCH.md: 18 ranked findings, 24 feature opportunities mapped to
+  milestones, comparator patterns from Things/Todoist/Obsidian/Actual/Monica,
+  WCAG guidance, delivery sequence and formative user-research/acceptance tasks.
+- Updated DESIGN with planned interaction requirements and corrected current
+  token values/accessibility-test wording; added actionable ROADMAP follow-ups
+  and a research-only completion checkbox; linked research from README.
+- No app code, dependency, data format, sync protocol or architectural choice
+  changed. F23/F24 remain candidates requiring separate design. No new ADR is
+  needed for this documentation-only prioritization.
+- Validation: `pnpm check` passed using cached repository pnpm 10.28.0; existing
+  typecheck/unit tasks used Turbo cache. Browser inspection is an expert audit,
+  not participant research or native/assistive-technology validation. No UI code
+  changed, so the existing e2e suite was reviewed rather than rerun.
+- Publication uses the explicitly authorized signed-in GitHub browser workflow.
+  Remaining work: implement unchecked tasks and conduct the proposed formative
+  research; native tooling and forge test-token blockers are unchanged.
 
 ### 2026-10-13 — Domain foundations and persistent local web workspace
 - Cloned the remote project into the empty local workspace and implemented a
