@@ -15,7 +15,9 @@ assistant on top.
   multi-currency.**
 - **Light and dark modes**, with a minimal, modern design.
 
-**Status:** Phase 0 (foundations) is in progress. See
+**Status:** An initial local web workspace is implemented alongside the domain,
+crypto and SQLite foundations. Sync, native apps, external calendars, AI and
+advanced module features are still in progress. See
 [docs/STATUS.md](docs/STATUS.md).
 
 ## Development
