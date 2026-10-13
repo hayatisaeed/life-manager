@@ -8,7 +8,7 @@ this document. If you change one, change the other in the same PR.
 
 - **Every entity** carries the sync envelope fields:
   - `id`: a ULID.
-  - `type`, `schema`, `hlc`, `fieldHlc`.
+  - `type`, `schema`, `hlc`, `fieldHlc`, optional `textVersions` (ADR-013).
   - `deletedAt`: an ISO timestamp, or null.
   - `createdAt`.
   - Only `data` is listed below.
@@ -30,6 +30,20 @@ this document. If you change one, change the other in the same PR.
     `core/src/entities/<entity>/upgrade.ts`.
   - Upgraders must be pure and must not drop fields they don't recognize. Keep
     them under `data._unknown`.
+
+Implementation conventions (ADR-012): envelope type names use lower camel case
+(e.g. `inboxItem`). `BlobRef = {hash, name, mime, size}` carries the plaintext
+BLAKE2b-256 content hash, original filename, MIME type and plaintext byte size.
+Goal status uses Project's `active | onHold | done | archived` enum; manual
+progress is a fraction in [0, 1]. Resource ratings are 1–5 and FSRS states 0–3.
+The settings record remains preserved as an unknown type until P0.7 defines
+its complete schema. Unknown/newer records must never be overwritten.
+
+Recurrence uses Sunday-anchored weeks; invalid fixed month/day dates are skipped.
+`until` is inclusive and `count` includes the initial matching occurrence. For
+`afterCompletion`, the caller supplies the completion date and total consumed
+instances; the next interval is anchored to completion. A bounded search that
+cannot find a match reports an error rather than silently marking a rule ended.
 
 ## 2. Shared types
 

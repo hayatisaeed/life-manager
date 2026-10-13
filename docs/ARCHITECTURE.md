@@ -1,6 +1,7 @@
 # Life Manager — Architecture
 
-Status: **approved plan, not yet implemented.** This is the top-level overview.
+Status: **partially implemented; local web workspace is usable.** See STATUS.md
+for verified scope; native clients and service integrations remain planned. This is the top-level overview.
 The detailed specs are:
 
 | Doc | Covers |
@@ -95,11 +96,15 @@ Dependencies only point downward:
 ## 4. Local storage
 
 - **SQLite everywhere**, behind one `SqlDriver` interface:
-  - Web: `@sqlite.org/sqlite-wasm`, with OPFS when available.
+  - Web: `@sqlite.org/sqlite-wasm` in a module worker, persisted through the
+    OPFS synchronous-access-handle pool. Storage failures are surfaced; there is
+    no silent in-memory fallback (ADR-014).
   - Desktop: `tauri-plugin-sql`.
   - Mobile: `@capacitor-community/sqlite`.
 - Two layers of tables:
-  - **Typed tables per entity**, used for queries and indexes.
+  - **Normalized envelope table with per-entity SQL views** (ADR-014), plus
+    type/deletion indexes and FTS5. Add entity-specific generated columns and
+    indexes through migrations when required by concrete query workloads.
   - **Sync bookkeeping tables:** `sync_base` (the last-synced plaintext of each
     record), `sync_remote` (the remote path → blob SHA map and tree SHAs) and
     `change_log` (dirty record ids).
