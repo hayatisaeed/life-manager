@@ -20,6 +20,19 @@ Work is split into **phases → milestones (P<phase>.<n>) → tasks**.
 
 ---
 
+## Research and product planning
+
+- [x] **R2026-10-13:** Expert UI/UX audit, source review, internal-browser
+  walkthrough and primary-source feature research; documented findings,
+  priorities, dependencies and acceptance gates in
+  [UX-RESEARCH.md](UX-RESEARCH.md).
+
+This checkbox completes research only. It does not complete any implementation
+milestone. The first unchecked engineering milestone remains **P0.2**. The audit
+recommends continuity/recovery and the daily planning loop before adding new
+modules; follow-up tasks below belong to their existing milestones. Candidate
+features F23/F24 require separate schema/merge design before acceptance.
+
 ## Phase 0 — Foundations
 
 ### P0.1 Monorepo & tooling
@@ -78,6 +91,9 @@ rejected.
 - [ ] Repository API (CRUD that stamps the HLC and writes the change log),
   live queries, FTS5 search
 - [ ] Encrypted attachment store
+- [ ] Recovery primitives for safe restore and multi-step conversion: specify
+  validation, rollback/resume and duplicate prevention before implementation
+  (audit U03/U11; coordinate P1.1 and P9.1)
 
 **AC:** The same repository test suite passes against the web driver in CI;
 desktop and mobile drivers are checked manually.
@@ -106,6 +122,15 @@ GitHub and on GitLab.
 - [ ] Onboarding wizard (SYNC.md §8): local-only, create a new repo, or join an
   existing repo; Settings → Sync page; sync status pill
 
+- [ ] Grouped desktop navigation, tablet overlay and five mobile tabs/More;
+  capture and storage status remain reachable; routable views/details support
+  Back and refresh (U04/U16)
+- [ ] Editor draft/discard policy, field errors, focus restoration and distinct
+  loading/first-use/no-results/unavailable states (U01/U09/U12)
+- [ ] Calendar-aware date entry independent of language/digits (U10)
+- [ ] Accessibility verification: axe plus manual keyboard/screen-reader,
+  focus, contrast, 320px reflow and 44px touch targets in en/fa and both themes
+
 **AC:** On a fresh install, a user can connect a GitHub or GitLab repo. A
 second device joins with the passphrase and both stay in sync.
 
@@ -117,17 +142,27 @@ second device joins with the passphrase and both stay in sync.
   share target and home-screen widget
 - [ ] Process inbox: convert an item into a task, note, event or person
   interaction
+- [ ] Destination preview and atomic or recoverable Inbox conversion; retry
+  cannot lose a source item or create duplicates (U11, F08)
+- [ ] Persistent capture entry point from every screen (F03)
 ### P1.2 Areas, projects, tasks
 - [ ] Area management; project list and Kanban
 - [ ] Task list views: Today, Upcoming, By project, By area, Filters
 - [ ] Subtasks, priorities, due dates, tags, recurrence UI (Jalali-aware),
   bulk edit
+- [ ] Connected task/project/area detail views with estimates and named
+  priorities; active/completed separation (U07/U09)
+- [ ] Today separates overdue/due/scheduled commitments from optional undated
+  backlog and lets users choose a small priority list (U05, F05)
 ### P1.3 Calendar & planner
 - [ ] Local events with recurrence; day and week timeline; month view
 - [ ] Planner combining events, scheduled and due tasks, habits, bills
   (hooks are filled in as later modules land)
 - [ ] **Time-blocking:** drag a task onto the timeline to make a TimeBlock;
   resize; keyboard alternative
+- [ ] Accessible agenda alternative, overlap feedback and derived daily
+  capacity from estimates/blocks; scheduling never silently changes deadlines
+  (U06, F07)
 ### P1.4 Notifications
 - [ ] Reminder scheduler per platform, quiet hours, per-device categories,
   daily digest, snooze
@@ -145,6 +180,10 @@ fire on desktop and Android.
 - [ ] CodeMirror Markdown editor, `[[wikilinks]]` with autocomplete,
   `@person` mentions, `#tags`
 - [ ] Backlinks panel, unlinked mentions, full-text search
+- [ ] Local global search/command palette with contextual result opening,
+  keyboard navigation and explicit scope; use repository FTS (U08, F04)
+- [ ] Full reading details for long notes, safe Markdown and contextual links
+  to projects/people (U14, F12)
 ### P2.3 Journal
 - [ ] Daily entry, prompts (daily/weekly/random), mood, calendar view
 
@@ -158,6 +197,10 @@ fire on desktop and Android.
   interruptions); time entries; "where did my hours go" report by area,
   project and task
 
+- [ ] **P3.4 follow-up:** Active focus session persists across module navigation; specify reload
+  recovery, pauses and duplicate-Finish prevention (U02, F01)
+- [ ] **P3.1 follow-up:** Habit log correction and schedule-aware Today actions (U13, F11)
+
 ## Phase 4 — Money
 - [ ] **P4.1** Accounts, categories, transactions (multi-currency, transfers),
   quick entry
@@ -166,6 +209,9 @@ fire on desktop and Android.
 - [ ] **P4.3** Bills and subscriptions with due reminders; "mark paid" creates
   the transaction
 - [ ] **P4.4** Savings goals; FX rates (manual plus an optional fetch)
+
+- [ ] **P4.1 follow-up:** Human-readable MoneyInput with exact integer conversion, currency/sign
+  guidance, field errors and account balance feedback (U09/U15, F14)
 
 ## Phase 5 — Health & learning
 - [ ] **P5.1** Health logs: sleep, water, exercise, mood, energy, weight,
@@ -208,6 +254,14 @@ fire on desktop and Android.
 - [ ] **P9.2** Importers: Todoist, Notion (Markdown/CSV export), Obsidian
   vault, vCard, bank CSV (column mapper), Anki `.apkg`
 
+- [ ] Validated restore preview into a fresh/existing workspace; cancel has no
+  writes, apply is recoverable, unknown records and relationships are preserved
+  (P9.1, U03, F02)
+- [ ] Import mapping, duplicates preview and safe retry before accepting data
+  (P9.2, F21)
+- [ ] **P9.1 follow-up:** Recoverable Trash UI beyond the latest undo toast; no new purge or
+  compaction behavior without the sync protocol (F02)
+
 ## Phase 10 — Release
 - [ ] **P10.1** Release workflow, updater signing, Android release signing
   (RELEASE.md)
@@ -221,6 +275,23 @@ fire on desktop and Android.
 - iOS build (Capacitor). Generic git transport (Gitea/SSH). Settings sync of
   secrets. Shared lists with other users. Wear OS and tablet layouts. Apple
   Health and Health Connect import.
+
+## Researched extensions — not yet accepted schemas
+
+- [ ] **F13:** Bundled localized note/journal/review templates, then editable
+  local templates after persistence/version rules are specified (P2/P3).
+- [ ] **F19:** Device-local module visibility/favorites and saved task views;
+  preserve hidden data/search; specify Settings before syncing preferences.
+- [ ] **F20:** Deterministic en/fa quick-capture parsing with preview and explicit
+  ambiguity handling, including Jalali dates and Persian digits (P1.1).
+- [ ] **F23 candidate:** Waiting-for/task dependencies; validate demand and
+  specify status, cycle and merge semantics before changing Task.
+- [ ] **F24 candidate:** Finance reconciliation and repeat-entry rules; validate
+  workflow and specify audit/undo/duplicate metadata before changing records.
+
+Detailed value, effort, confidence and prerequisites for **F01–F24** are in
+[UX-RESEARCH.md §4](UX-RESEARCH.md#4-potential-features-and-prioritization).
+These extensions introduce no server, paid service or automatic AI action.
 
 ## Implementation note — 2026-10-13
 
