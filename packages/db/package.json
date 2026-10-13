@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@lm/core": "workspace:*",
-    "@lm/platform": "workspace:*"
+    "@lm/platform": "workspace:*",
+    "@sqlite.org/sqlite-wasm": "3.53.4-build2"
   }
 }
