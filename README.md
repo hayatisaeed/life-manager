@@ -13,7 +13,8 @@ assistant on top.
 - **No server, no account, no telemetry.**
 - **English and Persian (RTL), Gregorian and Jalali calendars,
   multi-currency.**
-- **Light and dark modes**, with a minimal, modern design.
+- **Light and dark modes**. The target design pairs polished visuals and motion
+  with dedicated experiences for each module; the current UI is an early slice.
 
 **Status:** An initial local web workspace is implemented alongside the domain,
 crypto and SQLite foundations. Sync, native apps, external calendars, AI and
@@ -42,7 +43,8 @@ pnpm stories      # component stories (Ladle)
 | [SECURITY](docs/SECURITY.md) | Threat model and cryptography |
 | [DATA-MODEL](docs/DATA-MODEL.md) | Entities and fields |
 | [DESIGN](docs/DESIGN.md) | Visual design system and workflow requirements |
-| [UX-RESEARCH](docs/UX-RESEARCH.md) | UI/UX findings, feature opportunities and priorities |
+| [PRODUCT-RESEARCH](docs/PRODUCT-RESEARCH.md) | Fresh product research, full module scope, connected workflows and priorities |
+| [UX-RESEARCH](docs/UX-RESEARCH.md) | Earlier UI/UX audit and historical findings |
 | [TECH-STACK](docs/TECH-STACK.md) | Libraries and tools |
 | [RELEASE](docs/RELEASE.md) | Building, signing, distributing installers |
 | [DECISIONS](docs/DECISIONS.md) | Architecture decision log |
