@@ -20,6 +20,11 @@ function fakeRepository(): Repository {
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach((listener) => listener());
   return {
+    sync: {
+      snapshot: async () => ({ head: null, remote: new Map(), dirty: [], problems: [] }),
+      pull: async () => undefined,
+      acknowledge: async () => undefined,
+    },
     list: async (type, includeDeleted = false) =>
       [...rows.values()].filter(
         (row) => (!type || row.type === type) && (includeDeleted || !row.deletedAt),

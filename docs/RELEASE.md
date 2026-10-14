@@ -41,7 +41,11 @@ optionally `APPLE_*` and `WINDOWS_*`. **Never commit key material.**
 - **`release.yml`:** runs on a `v*` tag. A matrix of macOS, Windows and Ubuntu
   (for Android) builds runs `tauri-action` and the Gradle `assembleRelease`
   task. It then uploads the artifacts and `latest.json` to a draft release.
-- **`nightly-sim.yml`:** a long convergence-simulator run, nightly.
+- **`nightly-sim.yml`:** implemented long-profile workflow: ten shards cover
+  1,000 distinct seeds × five replicas × 1,000 operations. Manual dispatch is
+  available; scheduled runs require repository variable `LM_LONG_SIM_ENABLED=true`
+  to avoid unrequested runner usage. A successful full run remains unverified.
+  See `packages/sync/README.md` for local commands and dedicated forge contracts.
 
 ## 5. Local builds
 

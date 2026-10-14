@@ -1,0 +1,41 @@
+name: Long sync convergence
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: long-sync-convergence
+  cancel-in-progress: false
+
+jobs:
+  simulator:
+    # The full run uses substantial runner time; nightly execution is opt-in.
+    if: github.event_name == 'workflow_dispatch' || vars.LM_LONG_SIM_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    env:
+      LM_SIM_SEEDS: '100'
+      LM_SIM_OPS: '1000'
+      LM_SIM_SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Five replicas, 100 independent seeds in this shard
+        shell: bash
+        run: |
+          export LM_SIM_SEED=$((20261013 + LM_SIM_SHARD * 100))
+          pnpm --filter @lm/sync exec vitest run src/convergence.test.ts

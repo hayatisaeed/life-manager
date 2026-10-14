@@ -1,3 +1,8 @@
-// Platform adapter interfaces and web/Tauri/Capacitor implementations.
-// Implementation starts in Phase 0; see docs/ROADMAP.md.
-export {};
+export * from './http';
+export * from './secrets';
+export * from './locks';
+export interface SecretStore {
+  get(name: string): Promise<string | null>;
+  set(name: string, value: string): Promise<void>;
+  remove(name: string): Promise<void>;
+}

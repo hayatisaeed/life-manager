@@ -1,42 +1,28 @@
 import sodium from 'libsodium-wrappers-sumo';
 import { z } from 'zod';
+import {
+  vaultHeaderSchema as headerSchema,
+  legacyHeaderSchema,
+  kdfSchema,
+  decodeControl,
+  encodeControl,
+  headerDigest,
+  keyFingerprint,
+  randomControlId,
+} from './control';
+import type { VaultHeader, ControlledVaultHeader, VaultControl } from './control';
+export * from './control';
 const KEY_BYTES = 32;
 const NONCE_BYTES = 24;
 const MAX_BLOB_BYTES = 50 * 1024 * 1024;
 const pathSchema = z
   .string()
   .regex(/^([rb])\/([0-9a-f]{2})\/([0-9a-f]{2})\/([0-9a-f]{64})\.lm[rb]$/);
-const wrappedSchema = z.object({
-  kind: z.enum(['passphrase', 'recovery']),
-  nonce: z.string().length(32),
-  ct: z.string().length(64),
-});
-const headerSchema = z.object({
-  format: z.literal('life-manager'),
-  version: z.literal(1),
-  kdf: z.object({
-    alg: z.literal('argon2id'),
-    opslimit: z.number().int().min(3).max(10),
-    memlimit: z
-      .number()
-      .int()
-      .min(64 * 1024 * 1024)
-      .max(256 * 1024 * 1024),
-    salt: z.string().length(22),
-  }),
-  wrappedKeys: z
-    .array(wrappedSchema)
-    .length(2)
-    .refine((keys) => new Set(keys.map((key) => key.kind)).size === 2),
-  keyCheck: z.string().length(70),
-  createdAt: z.iso.date(),
-});
 function getRecoveryWrap(header: VaultHeader) {
   const wrap = header.wrappedKeys.find((item) => item.kind === 'recovery');
   if (!wrap) throw new Error('Missing recovery key');
   return wrap;
 }
-export type VaultHeader = z.infer<typeof headerSchema>;
 export type SubKeys = { record: Uint8Array; blob: Uint8Array; path: Uint8Array; local: Uint8Array };
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 function assertKey(key: Uint8Array): void {
@@ -153,7 +139,7 @@ export async function createCrypto() {
       throw new Error('Invalid ciphertext path');
   };
   const derivePassphrase = (passphrase: string, kdf: VaultHeader['kdf']) => {
-    headerSchema.shape.kdf.parse(kdf);
+    kdfSchema.parse(kdf);
     const salt = unb64(kdf.salt);
     if (salt.length !== sodium.crypto_pwhash_SALTBYTES) throw new Error('Invalid KDF salt');
     return sodium.crypto_pwhash(
@@ -190,6 +176,14 @@ export async function createCrypto() {
           'lm-key-check'
         )
           throw new Error('Invalid key check');
+        if (header.version === 2) {
+          const keys = deriveKeys(dataKey);
+          try {
+            decodeControl(header, keys.record);
+          } finally {
+            for (const key of Object.values(keys)) sodium.memzero(key);
+          }
+        }
         return dataKey;
       } catch {
         sodium.memzero(dataKey);
@@ -200,6 +194,43 @@ export async function createCrypto() {
     }
   };
   return {
+    encodeBase64: (bytes: Uint8Array) => sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL),
+    decodeBase64: (text: string) => sodium.from_base64(text, sodium.base64_variants.ORIGINAL),
+    encodeUtf8: (text: string) => sodium.from_string(text),
+    decodeUtf8: (bytes: Uint8Array) => sodium.to_string(bytes),
+    parseHeader: (input: unknown) => headerSchema.parse(input),
+    decodeControl,
+    encodeControl,
+    headerDigest,
+    keyFingerprint,
+    randomControlId,
+    controlHeader: (
+      input: unknown,
+      dataKey: Uint8Array,
+      control: VaultControl,
+    ): ControlledVaultHeader => {
+      const header = headerSchema.parse(input);
+      assertKey(dataKey);
+      if (
+        sodium.to_string(decrypt(unb64(header.keyCheck), dataKey, 'lmk1|check')) !== 'lm-key-check'
+      )
+        throw new Error('Invalid key check');
+      const binding = {
+        format: header.format,
+        version: 2 as const,
+        kdf: header.kdf,
+        wrappedKeys: header.wrappedKeys,
+        keyCheck: header.keyCheck,
+        createdAt: header.createdAt,
+      };
+      const keys = deriveKeys(dataKey);
+      try {
+        if (header.version === 2) decodeControl(header, keys.record);
+        return { ...binding, control: encodeControl(binding, control, keys.record) };
+      } finally {
+        for (const key of Object.values(keys)) sodium.memzero(key);
+      }
+    },
     randomKey: () => sodium.randombytes_buf(KEY_BYTES),
     dispose: (key: Uint8Array) => sodium.memzero(key),
     deriveKeys,
@@ -272,7 +303,7 @@ export async function createCrypto() {
       let wrappingKey: Uint8Array | undefined;
       try {
         wrappingKey = derivePassphrase(passphrase, kdf);
-        const header = headerSchema.parse({
+        const header = legacyHeaderSchema.parse({
           format: 'life-manager',
           version: 1,
           kdf,
@@ -305,11 +336,28 @@ export async function createCrypto() {
       };
       const key = derivePassphrase(newPassphrase, kdf);
       try {
-        return {
+        const next = {
           ...header,
           kdf,
           wrappedKeys: [wrap(dataKey, key, 'passphrase'), getRecoveryWrap(header)],
         };
+        if (header.version === 1) return next;
+        const keys = deriveKeys(dataKey);
+        try {
+          const control = decodeControl(header, keys.record);
+          if (control.state !== 'active') throw new Error('Maintenance in progress');
+          const { control: _control, ...binding } = next as ControlledVaultHeader;
+          return {
+            ...binding,
+            control: encodeControl(
+              binding,
+              { ...control, writeNonce: randomControlId() },
+              keys.record,
+            ),
+          };
+        } finally {
+          for (const key of Object.values(keys)) sodium.memzero(key);
+        }
       } finally {
         sodium.memzero(key);
       }
