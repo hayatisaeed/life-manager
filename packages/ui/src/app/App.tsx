@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Envelope } from '@lm/core';
+import { canonical } from '@lm/core';
 import { createRepository, createWebDriver } from '@lm/db';
 import type { Repository } from '@lm/db';
 import i18n, {
@@ -39,6 +40,7 @@ import type { FormatSettings } from '@lm/i18n';
 import { modules } from '../features/workspace/modules';
 import type { Module } from '../features/workspace/modules';
 import { Editor } from '../features/workspace/Editor';
+import type { EditorDraft } from '../features/workspace/Editor';
 import { Focus } from '../features/workspace/Focus';
 import { generateId, text, titleOf } from '../features/workspace/runtime';
 import '../theme/tokens.css';
@@ -110,12 +112,36 @@ export function App({
   const [storageFailed, setStorageFailed] = useState(false);
   const [page, setPage] = useState('today');
   const [query, setQuery] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, EditorDraft>>({});
+  const draftsRef = useRef<Record<string, EditorDraft>>({});
+  const [focusOpened, setFocusOpened] = useState(false);
+  const [focusActive, setFocusActive] = useState(false);
+  const [showBacklog, setShowBacklog] = useState(false);
+  const addRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const [capture, setCapture] = useState('');
+  const [capturing, setCapturing] = useState(false);
+  const captureBusy = useRef(false);
+  const captureAttempt = useRef<{ id: string; text: string } | null>(null);
   const [editor, setEditor] = useState<{ module: Module; record?: Envelope } | null>(null);
+  const editorRef = useRef(editor);
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
   const [error, setError] = useState('');
   const [toast, setToast] = useState<{ key: string; deletedId?: string } | null>(null);
   const captureRef = useRef<HTMLInputElement>(null);
   const [today, setToday] = useState(() => localDateAt(Date.now()));
+  const hasUnsavedWork = Object.keys(drafts).length > 0 || focusActive || Boolean(capture.trim());
+  useEffect(() => {
+    if (!hasUnsavedWork) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [hasUnsavedWork]);
   useEffect(() => {
     const timer = setInterval(() => setToday(localDateAt(Date.now())), 60000);
     return () => clearInterval(timer);
@@ -167,10 +193,12 @@ export function App({
     const keydown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        setPage('inbox');
         captureRef.current?.focus();
       }
-      if (event.key === 'Escape') setEditor(null);
+      if (event.key === 'Escape') {
+        setEditor(null);
+        if (openerRef.current?.isConnected) openerRef.current.focus();
+      }
     };
     window.addEventListener('keydown', keydown);
     return () => window.removeEventListener('keydown', keydown);
@@ -185,15 +213,28 @@ export function App({
   }
   async function quickCapture(event: React.FormEvent) {
     event.preventDefault();
-    if (!repo || !capture.trim()) return;
-    await action(async () => {
-      await repo.put('inboxItem', generateId(Date.now()), {
-        text: capture.trim(),
-        source: 'quick',
-        transcriptStatus: 'none',
+    if (!repo || !capture.trim() || captureBusy.current) return;
+    captureBusy.current = true;
+    setCapturing(true);
+    const input = capture;
+    if (captureAttempt.current?.text !== input.trim())
+      captureAttempt.current = { id: generateId(Date.now()), text: input.trim() };
+    const attempt = captureAttempt.current;
+    try {
+      await action(async () => {
+        await repo.put('inboxItem', attempt.id, {
+          text: attempt.text,
+          source: 'quick',
+          transcriptStatus: 'none',
+        });
+        setCapture((current) => (current === input ? '' : current));
+        captureAttempt.current = null;
+        setToast({ key: 'captureSaved' });
       });
-      setCapture('');
-    });
+    } finally {
+      captureBusy.current = false;
+      setCapturing(false);
+    }
   }
   const tasks = records.filter(
     (record) => record.type === 'task' && !['done', 'cancelled'].includes(text(record, 'status')),
@@ -208,7 +249,10 @@ export function App({
           ? record.type === 'task' &&
             text(record, 'status') !== 'done' &&
             text(record, 'status') !== 'cancelled' &&
-            (!record.data.dueDate || text(record, 'dueDate') <= today)
+            ((Boolean(record.data.dueDate) && text(record, 'dueDate') <= today) ||
+              (Boolean(record.data.scheduledAt) &&
+                localDateAt(Date.parse(text(record, 'scheduledAt'))) <= today) ||
+              (showBacklog && !record.data.dueDate && !record.data.scheduledAt))
           : false,
     )
     .filter((record) =>
@@ -250,6 +294,14 @@ export function App({
       }
     });
   }
+  const editorKey = editor ? `${editor.module.type}:${editor.record?.id ?? 'new'}` : '';
+  const removeDraft = (key: string) => {
+    draftsRef.current = Object.fromEntries(
+      Object.entries(draftsRef.current).filter(([name]) => name !== key),
+    );
+    setDrafts(draftsRef.current);
+  };
+  const acknowledgedDraft = drafts[editorKey];
   const captureForm = (
     <form
       className="capture"
@@ -259,12 +311,17 @@ export function App({
     >
       <input
         ref={captureRef}
+        dir="auto"
         aria-label={t('capture')}
         placeholder={t('captureHint')}
         value={capture}
         onChange={(event) => setCapture(event.target.value)}
       />
-      <button className="primary button-icon" disabled={!repo || !capture.trim()}>
+      <button
+        className={`button-icon ${page === 'today' || page === 'inbox' ? 'primary' : ''}`}
+        aria-label={t('captureAdd')}
+        disabled={!repo || !capture.trim() || capturing}
+      >
         <Plus size={18} />
         {t('add')}
       </button>
@@ -283,6 +340,7 @@ export function App({
               key={key}
               aria-current={page === key ? 'page' : undefined}
               onClick={() => {
+                if (key === 'focus') setFocusOpened(true);
                 setPage(key);
                 setEditor(null);
                 setQuery('');
@@ -344,7 +402,11 @@ export function App({
                 <button
                   className="primary button-icon"
                   disabled={!repo}
-                  onClick={() => setEditor({ module })}
+                  ref={addRef}
+                  onClick={(event) => {
+                    openerRef.current = event.currentTarget;
+                    setEditor({ module });
+                  }}
                 >
                   <Plus size={18} />
                   {t('add')}
@@ -364,7 +426,7 @@ export function App({
                 {t(error)}
               </p>
             )}
-            {(page === 'today' || page === 'inbox') && captureForm}
+            {captureForm}
             {page === 'today' && (
               <>
                 <div className="stats">
@@ -389,6 +451,14 @@ export function App({
                     {t('allTasks')} <ArrowUpRight size={14} />
                   </button>
                 </div>
+                <label className="backlog-toggle">
+                  <input
+                    type="checkbox"
+                    checked={showBacklog}
+                    onChange={(event) => setShowBacklog(event.target.checked)}
+                  />
+                  {t('includeBacklog')}
+                </label>
               </>
             )}
             {(page === 'money' || page === 'accounts') && (
@@ -425,12 +495,56 @@ export function App({
             )}
             {editor && repo && (
               <Editor
+                key={editorKey}
+                draft={drafts[editorKey]}
+                onDraft={(draft) => {
+                  draftsRef.current = { ...draftsRef.current, [editorKey]: draft };
+                  setDrafts(draftsRef.current);
+                }}
+                onSaved={(saved, submitted) => {
+                  // Like sync acknowledgments, a completed save cannot discard a newer draft revision.
+                  const latest = draftsRef.current[editorKey];
+                  if (latest !== acknowledgedDraft) {
+                    if (latest?.id === saved.id) {
+                      const edited = latest.edited.filter(
+                        (field) =>
+                          !submitted.edited.includes(field) ||
+                          canonical(latest.values[field]) !== canonical(submitted.values[field]),
+                      );
+                      draftsRef.current = {
+                        ...draftsRef.current,
+                        [editorKey]: { ...latest, base: saved.data, edited },
+                      };
+                      setDrafts(draftsRef.current);
+                    }
+                    return;
+                  }
+                  removeDraft(editorKey);
+                  const current = editorRef.current;
+                  if (
+                    current &&
+                    `${current.module.type}:${current.record?.id ?? 'new'}` === editorKey
+                  ) {
+                    setEditor(null);
+                    if (openerRef.current?.isConnected) openerRef.current.focus();
+                    else addRef.current?.focus();
+                  }
+                }}
+                onDiscard={() => {
+                  removeDraft(editorKey);
+                  setEditor(null);
+                  if (openerRef.current?.isConnected) openerRef.current.focus();
+                  else addRef.current?.focus();
+                }}
                 module={editor.module}
                 record={editor.record}
                 repo={repo}
                 accounts={moneyRecords}
                 today={today}
-                onClose={() => setEditor(null)}
+                onClose={() => {
+                  setEditor(null);
+                  if (openerRef.current?.isConnected) openerRef.current.focus();
+                }}
                 onError={() => setError('error')}
               />
             )}
@@ -524,9 +638,12 @@ export function App({
                         <button
                           className="icon-button muted-button"
                           aria-label={t('edit')}
-                          onClick={() => {
+                          onClick={(event) => {
                             const selected = module ?? modules.tasks;
-                            if (selected) setEditor({ module: selected, record });
+                            if (selected) {
+                              openerRef.current = event.currentTarget;
+                              setEditor({ module: selected, record });
+                            }
                           }}
                         >
                           <Pencil size={16} />
@@ -613,14 +730,17 @@ export function App({
                 </div>
               </section>
             )}
-            {page === 'focus' && repo && (
-              <Focus
-                repo={repo}
-                tasks={tasks}
-                onError={() => setError('error')}
-                onSaved={() => setToast({ key: 'focusDone' })}
-                prefs={prefs}
-              />
+            {(page === 'focus' || focusOpened) && repo && (
+              <div hidden={page !== 'focus'}>
+                <Focus
+                  repo={repo}
+                  tasks={tasks}
+                  onError={() => setError('error')}
+                  onSaved={() => setToast({ key: 'focusDone' })}
+                  prefs={prefs}
+                  onActiveChange={setFocusActive}
+                />
+              </div>
             )}
           </div>
         )}
