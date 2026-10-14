@@ -10,6 +10,16 @@ current local web slice implements only part of it; component inventory, bottom
 tabs, calendar-aware entry, command palette and accessibility CI are not all
 present. See [UX-RESEARCH.md](UX-RESEARCH.md) for observed gaps and priorities.
 
+**Local web continuity (2026-10-13):** capture is reachable on every screen,
+Cmd/Ctrl-K focuses it without changing views, and success is announced. Per-editor
+session drafts retain IDs and edited-field sets across navigation; explicit
+save/keep/discard actions and before-unload protection distinguish drafts from
+saved records. Saves do not discard newer draft revisions or patch untouched
+fields. Drafts and running focus state remain memory-only across navigation;
+reload recovery is still pending and the UI says so. Today defaults to dated or
+scheduled commitments with an opt-in undated backlog. Priorities use named
+choices. These changes do not complete the native shell or planning phases.
+
 ## 1. Principles
 
 1. **Content over chrome.** Borders and backgrounds separate content only when

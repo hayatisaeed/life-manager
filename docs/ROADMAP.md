@@ -140,6 +140,9 @@ GitHub and on GitLab.
   Back and refresh (U04/U16)
 - [ ] Editor draft/discard policy, field errors, focus restoration and distinct
   loading/first-use/no-results/unavailable states (U01/U09/U12)
+  - [x] Web session drafts, keep/discard, focus restoration, edited-field writes
+    and conditional save acknowledgments; named task priorities
+  - [ ] Durable reload recovery, other field errors and remaining state inventory
 - [ ] Calendar-aware date entry independent of language/digits (U10)
 - [ ] Accessibility verification: axe plus manual keyboard/screen-reader,
   focus, contrast, 320px reflow and 44px touch targets in en/fa and both themes
@@ -158,6 +161,9 @@ second device joins with the passphrase and both stay in sync.
 - [ ] Destination preview and atomic or recoverable Inbox conversion; retry
   cannot lose a source item or create duplicates (U11, F08)
 - [ ] Persistent capture entry point from every screen (F03)
+  - [x] Shared web UI capture on every screen; Cmd/Ctrl-K focus, success
+    announcement and pending-input/duplicate-submit protection
+  - [ ] Native shell entry points and platform verification
 ### P1.2 Areas, projects, tasks
 - [ ] Area management; project list and Kanban
 - [ ] Task list views: Today, Upcoming, By project, By area, Filters
@@ -212,6 +218,9 @@ fire on desktop and Android.
 
 - [ ] **P3.4 follow-up:** Active focus session persists across module navigation; specify reload
   recovery, pauses and duplicate-Finish prevention (U02, F01)
+  - [x] Web running/paused state across navigation, stable session IDs and
+    duplicate-Finish guard
+  - [ ] Durable process/reload recovery and native lifecycle verification
 - [ ] **P3.1 follow-up:** Habit log correction and schedule-aware Today actions (U13, F11)
 
 ## Phase 4 — Money

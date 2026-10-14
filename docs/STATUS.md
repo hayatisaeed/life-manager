@@ -35,23 +35,28 @@ short and current. Add new log entries at the top.
   sync, migration orchestration and offline recovery UI. Continue complete P0.3
   schema/coverage acceptance, native DB/platform adapters and remaining domain
   UIs. These new APIs are not yet connected to the local web workspace.
-- **Publication method:** the owner explicitly authorized signed-in GitHub
-  browser publication on 2026-10-13. Browser branch creation and commits work.
-  Terminal Git credentials and connector write access remain unavailable;
-  browser publication replaces the earlier access blocker.
-  In this session, publication also failed because terminal Git could not
-  resolve `github.com` and the internal browser showed a GitHub connection
-  timeout. The protocol draft is committed locally on
-  `codex/sync-recovery-protocol` and has not been pushed.
+- **Publication:** sync foundations are committed locally on
+  `codex/sync-recovery-protocol` (`c38ea79`); continuity work is on
+  `codex/workspace-continuity`. Terminal push lacks credentials. Connector read
+  checks confirmed both remote targets absent and research base `2ac1fbc` has
+  the same tree as local `27f66b8`. Automatic approval review rejected branch
+  creation twice (unconfirmed base/overwrite risk, then a documentation base
+  rather than the local tested tip). No remote write or PR was created.
+  Publication now requires exact authorization for the two tested branch snapshots
+  and their verified base; do not bypass the automatic review rejection.
 - **Blockers / external validation:** no dedicated forge test repositories/tokens
   supplied for authenticated CAS/CORS contract tests. `cargo` and `adb` are not
   available on this host. Windows/Android packaging and mobile KDF timing cannot
   be verified here. No owner's live data repo has been used for tests.
-- **UX risks reproduced:** unsaved editor drafts disappear on navigation;
-  active focus sessions reset when leaving Focus; Today includes undated
-  backlog; invalid priority produces a generic save error. Mobile hides local
-  status and later navigation destinations sit off-screen. Export has no restore
-  UI. DESIGN and ROADMAP now contain targeted acceptance requirements.
+- **Local UX improvements:** draft input and active/paused Focus state survive
+  module navigation; stable IDs and save/finish guards prevent duplicate retries;
+  editor saves patch only edited fields and acknowledge the submitted draft
+  revision. Persistent capture, keyboard focus and save feedback work everywhere.
+  Today excludes undated backlog unless selected, and priorities have named choices.
+- **Remaining UX risks:** drafts/focus state are memory-only; before-unload and
+  localized notices communicate the reload limit. Mobile still hides storage
+  status and uses a navigation strip. Restore UI, calendar-aware entry, routing,
+  field errors and the remaining planning/detail depth are unfinished.
 - **Known gaps:** product-connected sync/onboarding, AI, external calendars, PWA offline shell caching,
   notifications, native shells, importers, advanced planner/time blocking,
   budgets, streaks, routines, flashcards, document vault and insights remain
@@ -59,14 +64,43 @@ short and current. Add new log entries at the top.
   plain textarea. Mobile navigation is a scrollable strip. Text-version graph
   pruning is explicitly unavailable pending a separate accepted protocol. Required 100% branch coverage and all primitive
   known-answer vectors are not yet established.
-- **Verified locally:** `pnpm check` (118 unit tests; two opt-in forge contracts
-  not run), production web build, `pnpm test:e2e` (20 tests in light/dark and en/fa), persisted data after reload,
+- **Verified locally:** `pnpm check` (124 unit tests; two opt-in forge contracts
+  not run), production web build, `pnpm test:e2e` (28 tests in light/dark and en/fa), persisted data after reload,
   the Ladle story build, and page overflow checks at 1440/768/390/320px. Browser visual review covered
   English light desktop, Persian dark phone, and tablet layouts. Native
   platforms, the full 1,000-seed/all-domain simulator, authenticated network integrations, accessibility axe
   checks and installer distribution are unverified.
 
 ## Session log
+
+### 2026-10-13 — Local workspace continuity fixes
+- Continued the original completion request after the approved sync checkpoint,
+  on a separate local branch for reviewable scope.
+- Added independent session drafts with stable IDs, explicit keep/discard,
+  before-unload protection, opening/closing focus and textarea labels. Editor
+  writes only edited fields; late saves rebase/ack their own submitted fields and
+  cannot erase a newer draft or close another editor.
+- Kept running/paused Focus mounted across module navigation; added stable
+  session IDs, pending-finish protection and finite integer-minute validation.
+  Reload recovery remains pending; localized notices state that limitation.
+- Made capture reachable on every screen, Cmd/Ctrl-K focus in the current view,
+  success feedback and stable pending retries. A completed capture does not clear
+  input typed during IO. Today keeps undated backlog opt-in; priorities are named.
+- Added six UI logic tests and eight Playwright cases across en/fa/light/dark.
+  Validation: pnpm check (124 unit tests), production build and 28 Playwright
+  tests; reviewed desktop English light, tablet dark and 320px Persian dark
+  screenshots, with no overflow. No native or assistive-technology claim is made.
+- Browser QA caught restored textarea label lookup including its initial text;
+  explicit localized labels fixed the cause. Save-after-navigation tests then
+  verified that newer input and background fields survive acknowledgments.
+- Publication: terminal Git lacks credentials; automatic review rejected remote
+  branch creation. Read checks established byte-identical research bases and
+  missing target refs. Exact publication authorization is required; no remote
+  changes or PRs were made and no workaround bypassed the rejection.
+- Remaining: native/forge validation, product-connected sync and maintenance,
+  reload recovery, mobile navigation/status, routing/search/planner depth,
+  import/restore, remaining modules and release packaging. No phase is complete.
+
 
 ### 2026-10-13 — Approved protocol and encrypted record sync foundations
 - Recorded the owner's approval as ADR-016 and replaced the unsafe maintenance
