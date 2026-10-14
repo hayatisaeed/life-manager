@@ -148,6 +148,13 @@ Dependencies only point downward:
 - **Change detection:** walk tree SHAs (a Merkle diff) to find changed shards,
   then batch-fetch only the blobs that changed.
 
+Maintenance (ADR-016) uses a fenced snapshot migration to a new private repo,
+with full read-back before redirect/activation. Vault v2 adds authenticated
+control/write gates on every commit. Keep tombstones, text graphs and snapshot
+attachments indefinitely; never force-replace active history or purge by age.
+Local recovery retains bases/dirty HLCs; ciphertext problems block affected
+paths. See the accepted maintenance protocol for rollout acceptance criteria.
+
 ## 6. Security (summary — full spec in [SECURITY.md](SECURITY.md))
 
 - **Keys:**

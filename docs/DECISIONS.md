@@ -195,3 +195,28 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
   editable, safely rendered as text. Mobile navigation is a scrollable navigation
   strip until the planned bottom-tab shell arrives. No feature phase is marked
   complete solely because a minimal CRUD screen exists.
+
+
+### ADR-016 — Fenced snapshot migration and indefinite causal retention
+2026-10-13 · accepted by owner
+
+- **Context:** Forced GitHub ref replacement has no expected-head guard in the
+  documented API, GitLab per-file concurrency does not fence create-only writes,
+  and a 180-day tombstone purge/unspecified text pruning can lose offline edits.
+- **Decision:** The owner approved all three choices in the maintenance protocol:
+  compaction/rotation uses verified migration to a fresh private repo; vault v2
+  authenticates encrypted control with a shared write gate on every commit;
+  tombstones, text ancestry and snapshot attachments remain indefinitely until
+  a separate pruning/retirement protocol is accepted. The source stays a recovery
+  archive. Key rotation publishes no old-key-to-new-key secret bridge.
+- **Consequences:** GitLab maintenance depends on a real atomic-gate/CORS spike.
+  Offline recovery preserves local records/bases/dirty HLCs and attachment keys;
+  unknown/corrupt files are never discarded. Runtime controls remain unavailable
+  until the protocol's acceptance tests pass. No server, new crypto primitive or
+  tech-stack change is introduced. Exact v2 control encoding and state receipt
+  validation are in SYNC-MAINTENANCE-PROPOSAL.md §4.
+- **Implementation scope:** libsodium v2 control wrappers; SQLite migration 2
+  for retained ciphertext variants/resolution flags and creation provenance; sync lock/Merkle/cycle and
+  test forge. Actual transports, onboarding and maintenance orchestration remain
+  separate rollout work. Reuse zod at sync boundaries and the existing SQLite
+  WASM/fast-check dependencies for tests, with locked versions.

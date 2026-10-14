@@ -33,6 +33,12 @@ recommends continuity/recovery and the daily planning loop before adding new
 modules; follow-up tasks below belong to their existing milestones. Candidate
 features F23/F24 require separate schema/merge design before acceptance.
 
+- [x] **R2026-10-13 maintenance draft:** Specify safe maintenance/offline recovery
+  for owner review in [SYNC-MAINTENANCE-PROPOSAL.md](SYNC-MAINTENANCE-PROPOSAL.md).
+- [x] Owner approval of repository migration, vault v2/write gate and indefinite
+  tombstone/text retention (ADR-016, 2026-10-13). Runtime maintenance and
+  P0.6/P10.4 acceptance remain outstanding.
+
 ## Phase 0 — Foundations
 
 ### P0.1 Monorepo & tooling
@@ -99,15 +105,22 @@ rejected.
 desktop and mobile drivers are checked manually.
 
 ### P0.6 Sync engine (`packages/sync`)
-- [ ] `SyncTransport` interface + fake forge
+- [x] `SyncTransport` interface + fake forge
 - [ ] Sync cycle (SYNC.md §5), Merkle diff, batching, backoff, rate-limit
   tracking, lock
+  - [x] Existing-v2-vault record cycle, transactional SQLite pull/ack, Merkle
+    traversal, bounded batches/retries/rate handling and local/Web Locks APIs
+  - [ ] Product scheduling/onboarding, attachment sync and durable vault pins
 - [ ] GitHub transport; GitLab transport
+  - [x] Implemented API adapters and mocked contract branches
+  - [ ] Authenticated real-forge/CORS verification; GitLab writes remain gated
 - [ ] **Convergence simulator:** 5 devices × 1,000 random operations, random
   sync order, must reach identical state. Runs in CI (short) and nightly
   (long).
 - [ ] Opt-in contract tests against real repos (`LM_TEST_GITHUB_*`,
   `LM_TEST_GITLAB_*` env vars)
+  - [x] Dedicated-repo atomic-gate race tests and environment documentation
+  - [ ] Actual execution with supplied test vaults/tokens and browser CORS tests
 
 **AC:** The simulator passes 1,000 seeds. A real two-device sync works on
 GitHub and on GitLab.

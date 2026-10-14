@@ -31,8 +31,8 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
 - `.lmb` file content is **binary**: `LMB1` ‖ `nonce(24)` ‖ `ciphertext`.
 - Blob size cap: **25 MB** after encryption (configurable, hard maximum 50 MB).
   Larger attachments stay on the device only, and the UI says so.
-- **Branch:** the repo's default branch. The app never creates other branches,
-  except during compaction (§9).
+- **Branch:** the configured repository's default branch. Maintenance migrates
+  to a fresh private repository (§9); it never force-replaces an active branch.
 - **Commit message:** always `sync`. The author is `Life Manager
   <noreply@invalid>`. The commit has no device identifiers in plaintext.
 
@@ -41,16 +41,29 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
 ```json
 {
   "format": "life-manager",
-  "version": 1,
+  "version": 2,
   "kdf": { "alg": "argon2id", "opslimit": 3, "memlimit": 268435456, "salt": "<b64>" },
   "wrappedKeys": [
     { "kind": "passphrase", "nonce": "<b64>", "ct": "<b64>" },
     { "kind": "recovery",   "nonce": "<b64>", "ct": "<b64>" }
   ],
   "keyCheck": "<b64 AEAD of constant 'lm-key-check'>",
-  "createdAt": "2026-10-09"
+  "createdAt": "2026-10-09",
+  "control": "LMC2.<authenticated encrypted control>"
 }
 ```
+
+Version 2 adds authenticated encrypted control: vault identity, generation,
+write nonce and maintenance state. Its exact encoding, header-binding tuple,
+strict schemas and migration receipts are specified in
+[the maintenance protocol §4](SYNC-MAINTENANCE-PROPOSAL.md#4-proposed-vault-version-2-and-authenticated-write-gate).
+Every ordinary commit updates this control with a fresh nonce. Read and
+validate `lm.json` at the pinned head on **every** cycle; only an authenticated
+`active` control with the configured vault identity and generation permits
+ordinary writes. Unknown versions require an update; generation/identity
+changes require recovery; frozen/staging/redirect states block ordinary sync.
+Legacy v1 crypto remains readable, but this sync implementation refuses v1
+writes until an explicit upgrade initializes control.
 
 - `lm.json` is created once, when the first device initializes an empty repo.
 - If it already exists, a joining device unlocks it with the passphrase or the
@@ -87,7 +100,9 @@ b/<s1>/<s2>/<name>.lmb          one encrypted attachment blob per file
 | `sync_meta` | Forge config, `lastSyncedCommit`, `deviceId`, HLC state |
 | `sync_remote` | `path → blobSha` and `dir → treeSha` as of `lastSyncedCommit` |
 | `sync_base` | `recordId → plaintext envelope` as of the last sync. This is the merge base. |
-| `change_log` | Record ids changed locally since the last successful push |
+| `change_log` | Record ids and captured HLCs changed locally since successful acknowledgment |
+| `sync_problems` | Every rejected ciphertext variant by opaque path and redacted reason; unresolved variants block writes; resolved variants remain exportable |
+| `record_origins` | Durable local creation/ever-synced ledger for safe offline recovery |
 
 **Merge base without git:** "base" is whatever this device last pushed or
 accepted for a record. The forge's commit graph isn't needed, so the forge can
@@ -96,7 +111,8 @@ stay a plain linear history.
 ## 5. Sync cycle
 
 ```
-1. head ← transport.getHead()
+1. head ← transport.getHead(); authenticate lm.json at that head
+   require active control with the expected vault identity/generation
 2. if head ≠ lastSyncedCommit:
      changed ← diffTrees(lastSyncedCommit snapshot in sync_remote, head)   // Merkle walk
      blobs   ← transport.readBlobs(changed)                                // batched
@@ -110,11 +126,12 @@ stay a plain linear history.
                             (id stays in change_log, because merged ≠ theirs)
      update sync_remote to the head snapshot
 3. if change_log is non-empty:
-     files ← encrypt(each dirty record)
+     files ← encrypt(each dirty, known, unblocked record) + fresh lm.json control
      newHead ← transport.commit(parent = head, files)    // CAS on branch
        on conflict → go to 1 (exponential backoff, max 5 tries per cycle)
-     sync_base[id] ← pushed envelope; clear change_log entries that were pushed
-     update sync_remote with the new blob SHAs (computed locally: git blob SHA-1)
+     sync_base[id] ← pushed envelope; clear change_log only where id AND hlc match
+     obtain actual new blob/tree SHAs from a pinned Merkle read-back
+     update sync_remote with the returned blob/tree SHAs
 4. lastSyncedCommit ← newHead or head
 ```
 
@@ -163,6 +180,7 @@ simulator checks both.
 ```ts
 interface SyncTransport {
   getHead(): Promise<CommitSha>;
+  getRoot(commit: CommitSha): Promise<TreeSha>;
   getTree(sha: TreeSha, path: string): Promise<TreeEntry[]>;          // non-recursive
   getTreeRecursive?(commit: CommitSha): Promise<TreeEntry[] | 'truncated'>;
   readBlobs(entries: { path: string; sha: BlobSha }[]): Promise<Map<string, Uint8Array>>;
@@ -183,12 +201,13 @@ interface SyncTransport {
   - Binary `.lmb` files are read with `GET /git/blobs/{sha}`, which returns
     base64.
 - **Commit:**
-  1. Create binary blobs with `POST /git/blobs`.
-  2. `POST /git/trees` with `base_tree` set to the parent's tree. Text records
-     go inline as `content`; blobs go in by SHA.
+  1. Create ciphertext blobs with `POST /git/blobs` using base64.
+  2. `POST /git/trees` with `base_tree` set to the parent's tree and created
+     blob SHAs. Text records may later go inline as `content` after benchmarking.
   3. `POST /git/commits` with the parent commit.
-  4. `PATCH /git/refs/heads/{branch}` with `force: false`. **A 422 error means
-     someone else moved the branch, so return `'conflict'`.**
+  4. `PATCH /git/refs/heads/{branch}` with `force: false`. Classify a genuine
+     non-fast-forward race as `'conflict'`; a 422 can also mean validation or
+     abuse limiting and must not always be treated as a race.
 - **Token:** a fine-grained PAT limited to this one repo, with **Contents:
   Read and write** and **Metadata: Read**.
 - **Rate limits:** 5,000 REST requests per hour and 5,000 GraphQL points per
@@ -208,18 +227,13 @@ interface SyncTransport {
 - **Commit:** `POST /projects/:id/repository/commits` with `branch`,
   `start_sha` set to the parent commit, and `actions[]` (create, update, delete;
   `encoding: base64` for binary).
-- **CAS:**
-  - GitLab has no "update ref only if" operation.
-  - **Approach:** every update action carries `last_commit_id`, the commit id
-    of the last change to that file as this device knows it. A `create` fails if
-    the file already exists. Either failure is treated as `'conflict'`.
-  - Commits that only touch other files may land on a head we haven't seen.
-    That is safe, because records merge per file and we pick them up on the
-    next cycle.
-  - `last_commit_id` per path comes from the commit response for files we
-    pushed, and from the `X-Gitlab-Last-Commit-Id` header when we read a file
-    through the files API.
-  - **This needs a spike to verify.**
+- **CAS/write fence:** every commit, including create-only batches, updates
+  `lm.json` with fresh encrypted control and its last known **file commit ID**
+  as `last_commit_id`. Read this ID at the pinned head; it is not necessarily
+  the branch head. The header action and record actions must succeed or fail
+  together. Per-record update/delete actions also carry their file commit IDs.
+  A changed gate means conflict/re-read. This is the accepted protocol direction,
+  but real-forge atomic-gate/CORS tests are required before enabling support.
 - **Token:** a project access token (Developer role) or a PAT with the `api`
   scope. GitLab's REST writes need `api`.
 
@@ -249,23 +263,37 @@ inject latency, 422/409 conflicts, rate-limit responses and truncation.
 
 ## 9. Maintenance
 
-- **Tombstones:**
-  - Deleted records stay as tombstones for 180 days, then compaction removes
-    their files.
-  - A device that hasn't synced for more than 180 days is told to do a "full
-    resync". Its local-only changes are re-pushed as new edits.
-- **Compaction** is user-triggered:
-  1. Create an orphan commit containing only the live files.
-  2. Move the branch to it: a forced ref update on GitHub; a new branch plus a
-     default-branch switch on GitLab.
-  3. Other devices detect that `lastSyncedCommit` is no longer an ancestor and
-     do a full resync, comparing blob SHAs so unchanged records aren't
-     re-downloaded.
-- **Passphrase change:** rewrap the data key and update `lm.json`.
-- **Key rotation:** re-encrypt every file in one commit, then compact so old
-  ciphertext leaves the history.
+[The accepted maintenance and recovery protocol](SYNC-MAINTENANCE-PROPOSAL.md)
+(ADR-016) supersedes the original orphan-commit/180-day-purge sketch:
+
+- Retain tombstones, causal text versions and snapshot attachments indefinitely.
+  A full resync must not erase evidence of deletion or stale text ancestry.
+- History compaction and key rotation migrate a fenced, complete snapshot to a
+  user-configured empty private repository. Keep the source as a recovery archive.
+- Verify the complete destination by pinned reads before publishing an encrypted
+  source redirect. Activate staging after redirect; crash intervals are resumable.
+- Rotation uses an independent data key/new passphrase/recovery key and changes
+  every derived key/path. Missing blob-hash inventory, unknown codecs and
+  undecryptable files block rotation before redirect. Preserve all data.
+- Returning devices retain records, dirty versions, bases and attachment keys,
+  stage the full destination, merge pending edits, then switch atomically.
+  Missing previously synced records require a repair preview; absence never
+  instructs automatic deletion/re-creation.
+- Passphrase changes gate an authenticated header rewrap, keeping the data key
+  and recovery wrap. They do not revoke previously exposed keys/headers.
+- No automatic source deletion, forced active-branch replacement, age-based
+  pruning, timer takeover or automatic cross-origin redirect/token forwarding.
+- Maintenance UI remains unavailable until protocol §11 acceptance tests pass.
 
 ## 10. Error handling
+
+Clean pulls also reject HLC regressions or loss/collision of retained original
+text ancestry. Quarantine the received ciphertext and retain the local record;
+do not treat a valid older AEAD payload as permission to erase newer history.
+SQL/IO failures roll back the entire pull rather than becoming per-record
+validation problems. Locking during an in-flight cycle aborts at async boundaries
+before any later crypto use, so disposed keys can never encrypt outgoing data.
+
 
 - **Network or 5xx errors:** retry with jitter. Sync is never blocking: the UI
   shows a status pill (synced, syncing, offline, error).

@@ -36,6 +36,8 @@ implement our own primitives.
   path before accepting it (ADR-011).
 - Blobs: `"lmb1|" + contentHash`.
 - Wrapped keys: `"lmk1|" + kind`.
+- Vault v2 control: `"lmc2|" + hex(BLAKE2b-256(canonical header tuple))`,
+  with the record subkey. See the maintenance protocol §4 for exact tuple bytes.
 
 KDF contexts above are NUL-padded to exactly eight bytes, with subkey ID 1
 per context (ADR-012). Recovery strings use RFC 4648 base32, grouped in four
@@ -43,7 +45,17 @@ characters with no padding; nonzero trailing bits are rejected.
 
 ## 3. Key lifecycle
 
-- **Data key:** created once per repo. It is never sent anywhere unencrypted.
+**Accepted maintenance policy (ADR-016):** Vault v2 authenticates encrypted
+control and clear header metadata using the record subkey and the `lmc2|` domain.
+Version 1 remains readable for legacy vaults; ordinary v2 sync rejects v1 writes.
+[The maintenance protocol](SYNC-MAINTENANCE-PROPOSAL.md) specifies fencing,
+independent-key rotation and returning-device recovery. Maintenance requires
+verified snapshot migration into a new private repo and retains the source
+archive. No old-data-key-to-new-key bridge is published. Local recovery keys and
+old attachment/secret keys stay exclusively behind `platform.secrets` until
+rewrites verify. Retain tombstones/text ancestry; do not purge by elapsed time.
+
+- **Data key:** created for the vault; rotation generates an independent new key. It is never sent anywhere unencrypted.
 - **On each device:**
   - **Native:** the unwrapped data key is stored in the OS keychain (macOS
     Keychain, Windows Credential Manager, Android Keystore) and released after
