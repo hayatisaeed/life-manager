@@ -228,3 +228,37 @@ replayed from them if two devices review the same card at the same time.
   energy profile, life-wheel areas, and AI privacy toggles.
 - **Device settings** never sync: per-device reminder categories, the sync
   interval, connectors, and secrets.
+
+
+## 15. Product expansion mapping — planned, no schema change
+
+[PRODUCT-RESEARCH.md](PRODUCT-RESEARCH.md) broadens the product experience.
+This section maps that target to current entities; the tables above remain
+canonical. No new field/type/version is introduced by this documentation change.
+
+| Planned experience | Current entity basis | Additional contract required |
+|---|---|---|
+| Multiple notes about a person | Note + Link (`about`), Person.notes for overview | Per-person pin/order only if later required (G05). |
+| Conversation history and promises | Interaction + its personIds/followUpTaskIds + Task | Retry-safe compound writes; cadence snooze/reset and duplicate reference rewrite (G05). |
+| Project workspace and related knowledge | Project + Task.projectId + Area + Note/Resource links | Project-owned sections/milestones/target dates (G03); existing Milestone belongs to Goal. |
+| Waiting/dependency views | Task + Link (`blocks`) | Status/context, cycle and concurrent update semantics (G04). |
+| Real calendar and daily execution | Event + TimeBlock + Task + FocusSession/TimeEntry | Chosen-day priority persistence and durable lifecycle contract (G01); recurring edits. |
+| Habit/routine/health detail | Habit/HabitLog + Routine/Run + HealthLog/MetricDef | Idempotent occurrences, history correction and units; no new fields by implication. |
+| Finance depth | Account/Transaction/Category/Budget/Bill/SavingsGoal/FxRate | Splits/reconciliation/audit/rules/payment identity (G06). |
+| Writing, annotations and learning | Note + JournalEntry/Prompt + Resource + Card/Deck/ReviewLog | Highlight source locators, journal cardinality/collections and templates/media (G07). |
+| Documents and home management | Document + Asset + MaintenancePlan + ShoppingList/Item | Asset locations/custom fields and maintenance history identity (G08). |
+| Goals and review | Goal + Milestone + linked Task/Project + WeeklyReview/Insight | New habit/resource contribution formulas only after G08. |
+| Personal workspace preferences/recovery | Settings plan and device-local runtime state | Complete synced/device-local preference and draft/session contract (G01). |
+| Inbox processing depth | InboxItem + destination entities | Archive/defer/split provenance and recoverable conversion (G02). |
+
+Derived views must preserve identity across modules. A note save is not an
+Interaction and must not count as contact. A follow-up remains the same Task in
+People, Today and Planner. Linking a note never copies its text into a person's
+record. Deleting/archiving a person must not implicitly purge linked notes,
+interactions or follow-ups. Missing/tombstoned references need an explicit
+presentation and restore policy; duplicate resolution cannot silently drop them.
+
+G01–G08 require validation, migration/upgraders, unknown-field preservation,
+reference/deletion behavior, export/restore and deterministic merge tests before
+new schemas are accepted. The relevant implementation must update code and this
+canonical document together. Detailed gates are in PRODUCT-RESEARCH §7.

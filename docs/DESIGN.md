@@ -1,14 +1,22 @@
 # Design System
 
-**Direction:** minimal and modern. Calm, content-first, lots of whitespace, one
-accent color, and soft depth. It should feel closer to Linear, Things or Notion
-than to a dashboard full of widgets. Light, dark and system themes are
-first-class: every screen is designed and tested in both.
+**Direction (2026-10-14):** polished, warm and purposeful. Strong typography,
+considered spacing, layered surfaces and useful motion should make the workspace
+attractive and easy to read. Each module gets a layout and interaction model
+suited to its job; a shared design language connects them. A generic list/form
+with a different heading is insufficient. Light, dark and system themes and
+Persian RTL are first-class.
+
+The owner's new brief explicitly asks for richer features, distinct module
+experiences and more visual appeal. [PRODUCT-RESEARCH.md](PRODUCT-RESEARCH.md)
+is the fresh external evidence and module blueprint. Sections 11–12 below
+extend this specification; they describe targets, not shipped UI.
 
 **Implementation status:** This document defines the target experience. The
 current local web slice implements only part of it; component inventory, bottom
 tabs, calendar-aware entry, command palette and accessibility CI are not all
-present. See [UX-RESEARCH.md](UX-RESEARCH.md) for observed gaps and priorities.
+present. See [PRODUCT-RESEARCH.md](PRODUCT-RESEARCH.md) for the current direction and
+[UX-RESEARCH.md](UX-RESEARCH.md) for the earlier audit.
 
 **Local web continuity (2026-10-13):** capture is reachable on every screen,
 Cmd/Ctrl-K focuses it without changing views, and success is announced. Per-editor
@@ -61,8 +69,9 @@ raw colors.**
 - **Shadows:** soft in light mode. Dark mode uses a slightly lighter surface
   plus a 1px border instead of a shadow.
 - **Spacing:** a 4px base grid; most layout uses 8, 12, 16, 24 and 32.
-- **Motion:** 150–200ms ease-out for UI, 250ms for panels. Respect
-  `prefers-reduced-motion`.
+- **Motion:** shared duration/easing/distance tokens and the interaction
+  choreography in §12. Honor `prefers-reduced-motion`; timing ranges are targets
+  to validate, not currently implemented tokens.
 
 ## 3. Typography
 
@@ -127,8 +136,10 @@ raw colors.**
 
 ## 7. Interaction patterns
 
-- **Optimistic UI everywhere.** Writes are local, so they are instant. Never
-  show a spinner for a local write.
+- **Immediate feedback with truthful persistence.** Reflect reversible local
+  intent promptly. A local write can still fail or take time: show scoped pending
+  status when needed, acknowledge success after persistence, and roll back or
+  retain the draft on failure. Animation is never proof that data was saved.
 - **Undo toast** for destructive actions instead of confirmation dialogs.
   Confirm only irreversible actions such as wiping data or compaction.
 - **Drag and drop** (dnd-kit) for time-blocking, reordering, Kanban and
@@ -236,3 +247,137 @@ WCAG 2.2 AA is the accessibility target; automated checks supplement manual
 screen-reader and keyboard review. An overflow test or screenshot is insufficient
 on its own. Full workflow gates and formative research tasks are in
 [UX-RESEARCH.md §§5–6](UX-RESEARCH.md#5-concrete-acceptance-gates).
+
+
+## 11. Dedicated module experiences
+
+These requirements replace the prototype's shared record-list/editor as the
+product-level composition. Share buttons, form fields, date/money inputs,
+status patterns and repository hooks. Feature folders own their screens,
+reading surfaces, detail layouts and workflow state. A shared row primitive
+is useful; a single generic screen is not an acceptable module architecture.
+
+### Visual direction and hierarchy
+
+- Establish an intentional shell: quiet tinted navigation surface, readable
+  canvas and elevated detail/editor surfaces. Use semantic surface/elevation
+  tokens; dark mode uses luminance and edges rather than oversized shadows.
+- Use generous display type for a home or profile introduction, compact headings
+  for action lists and bounded readable measure for prose (roughly 60–75 Latin
+  characters as an initial target; validate Persian independently). Reading
+  width must not constrain a calendar or finance register.
+- Balance whitespace with useful density. Offer comfortable and compact list
+  density after preference persistence is specified. Avoid sparse empty canvases
+  with identical generic text. Desktop lists can be compact while interaction
+  targets retain the product's 44px touch requirement.
+- Give modules appropriate identity through composition, content, iconography
+  and a small semantic accent vocabulary. A person's avatar, a book's progress,
+  a timeline's time grid and an account's amount columns are functional anchors.
+  Color is a secondary cue and always has a text/icon equivalent.
+- Use one coherent icon set, aligned baselines, consistent toolbar heights,
+  restrained borders and tested light/dark status colors. Keep Inter/Vazirmatn
+  locally bundled; do not introduce a new font or animation library by default.
+- Prototype two visual directions with the same realistic content: a warm
+  editorial workspace and a crisp compact workspace. Compare clarity, density,
+  attractiveness and RTL before selecting the final token refinements. This is
+  a design validation task, not a required owner permission step.
+
+### Screen contracts
+
+| Module | Primary composition | Primary actions and useful context |
+|---|---|---|
+| Today | Agenda with chosen priorities, due actions and a compact focus strip | Plan day, start next action; capacity and reasons for inclusion. |
+| Inbox | Capture composer + processing queue + destination preview | Capture, process next, convert/link; source and recoverable processing state. |
+| Tasks | Grouped action rows + filters + expandable task detail | Add inline, complete, schedule, bulk move; project/estimate/deadline. |
+| Projects/Areas | Portfolio + project brief, task board/list and contextual notes | Define outcome, add next action, review; progress basis and ongoing area responsibilities. |
+| Planner | Day/week time grid + unscheduled tray + accessible agenda | Schedule, resize, create event; conflicts, source, timezone and available capacity. |
+| People | Directory + avatar/profile header + timeline/notes/follow-up tabs | Add note, log conversation, create follow-up; relationship context and last contact. |
+| Notes | Library/list + spacious editor/reader + backlinks | Write, link, find; note context and source navigation. |
+| Journal | Calendar/chronology + writing canvas + optional prompt/mood | Write and revisit; day context and private reading. |
+| Habits | Due check-ins + period progress + history/heatmap | Log/correct; schedule, target/unit and compassionate feedback. |
+| Routines | Step runner + progress + resume controls | Start, check step, pause/resume; optional linked habit action. |
+| Focus | Focused timer + selected task + persistent compact controls | Start/pause/finish, record interruption; recovery and time history. |
+| Money | Account summary + aligned transaction register + budgets/bills/reports | Record, transfer, categorize, mark paid; exact balance and currency basis. |
+| Health | Metric-specific quick inputs + trends + date navigator | Log/correct; units, missing observations and annotation context. |
+| Library/Learning | Resource shelf/list + progress/detail + card review runner | Continue resource, take note, review card; source and learning history. |
+| Life admin | Due queue + asset dossier + document gallery/list + shopping checklist | Find document, renew, maintain, check off; warranty/expiry/task history. |
+| Goals/Review/Insights | Goal milestones + connected work; guided review; drillable reports | Choose next step, reflect, apply changes; explain progress/data completeness. |
+| Settings/Data | Grouped settings and recovery center | Configure, export/restore, recover; local/remote/storage status. |
+
+Within a shared shell, these layouts must remain visibly and behaviorally
+recognizable with headings hidden. Do not implement this requirement by merely
+assigning different colors to the existing list. Alternate views should serve
+real tasks and keep one record identity; avoid view toggles that have no useful
+purpose.
+
+### Navigation and progressive disclosure
+
+Group desktop navigation into Daily (Today, Inbox, Planner, Tasks), Work &
+Direction (Projects, Areas, Goals), Knowledge & People (People, Notes, Journal,
+Library) and Life (Habits/Routines, Focus, Money, Health, Admin, Review/Insights).
+Use expandable groups/favorites to manage density; Settings and honest storage/
+sync state remain anchored and reachable. The group names are design labels
+that require en/fa copy review, not hard-coded UI strings.
+
+Keep §5's phone tabs and tablet overlay; More groups every module and favorites.
+A phone detail is its own navigable screen, not a narrow desktop panel. Keep
+Capture reachable via a compact action/composer; it need not occupy a full row
+on every specialized screen. Global search is distinct from contextual filters.
+
+Use task-specific verbs: Add note, Log interaction, Schedule task, Record payment,
+Start routine. First-use screens explain the module through a small realistic
+example and one action. Populated screens show useful summaries, not filler.
+Optional sample data must be explicitly chosen, synthetic and removable; do
+not seed a real workspace silently.
+
+## 12. Motion, delight and review
+
+Motion is a product requirement. It explains cause/effect, maintains orientation
+and gives completion satisfying feedback. It must remain subtle enough for
+all-day use and must never delay input, conceal failure or replace meaning.
+[W3C's animation guidance](https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html)
+identifies disabling nonessential interaction-triggered motion as SC 2.3.3
+(Level AAA). Life Manager adopts this behavior in addition to its AA target;
+it is not described as an AA-only criterion.
+
+| Interaction | Intended motion / initial range | Reduced-motion equivalent |
+|---|---|---|
+| Button, chip and selection feedback | Color/opacity feedback, 100–160ms; no scale on every hover | Immediate state/color update. |
+| Task/habit completion | Check/progress feedback, 160–220ms; preserve row briefly before settling | Immediate check and status text with undo; avoid sudden focus loss. |
+| Task expansion and detail sheet | Small opacity/transform transition, 180–260ms; origin/context remains legible | Immediate panel or short opacity change without translation. |
+| Inbox processing | Selected item settles into destination confirmation, 180–240ms | Accessible confirmation and next queue item; source stays recoverable. |
+| Reordering/Kanban | Drag preview, insertion cue and settling, 150–220ms | Static insertion cue, keyboard move action and announcement. |
+| Calendar move/resize | Live time/duration preview; brief settling after drop | Immediate placement with textual time/conflict feedback. |
+| View/tab changes | Stable shell; small content crossfade, 120–180ms | Immediate content update with heading/focus context. |
+| Save/error/undo | Non-blocking status appearance, 120–180ms; persistent recovery when needed | Immediate readable and announced status. |
+| Goal/routine milestone | Optional one-shot restrained completion accent, 200–300ms | Plain success/progress update; no confetti requirement. |
+
+Use shared motion tokens (fast/normal/panel, easing and small displacement),
+prefer transform/opacity, reserve space and measure expensive layouts. No
+infinite decoration, auto-playing illustration, staggered delay on every row,
+full-page slide per click or animated timer digits. Timer rings may be static
+under reduced motion while actual time stays correct. Respect the system
+preference; an optional app setting can further reduce motion, not force motion
+against the system preference.
+
+### Design acceptance gate
+
+Before a module is marked complete:
+
+1. Review its primary workflow using realistic synthetic data, not just an
+   empty screenshot. Cover long Persian/English content, validation, loading,
+   no-results, IO failure and success/recovery states.
+2. Compare it with neighboring modules: the shape, primary verb and detail
+   context must reflect its job while tokens/components remain consistent.
+3. Review 320/390/768/1440px, both themes and directions, keyboard/touch,
+   screen-reader announcements, focus restoration and system reduced motion.
+   Observe actual animation and interruption; a screenshot cannot prove these.
+4. Confirm no animation asserts persistence before acknowledgment and that
+   interruption/navigation never loses a draft or duplicates an action.
+5. Run the module scenario and the connected journey in PRODUCT-RESEARCH §4–5.
+   Record formative usability results against §6 targets when participants are
+   available. Failed clarity/recovery checks require iteration, not more fields.
+
+These gates extend existing testing; they do not claim that the prototype
+already meets them. Motion/token implementation and rendered prototype review
+are still unchecked roadmap work.

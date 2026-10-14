@@ -220,3 +220,25 @@ Format: `ADR-NNN — Title` · date · status · context → decision → conseq
   test forge. Actual transports, onboarding and maintenance orchestration remain
   separate rollout work. Reuse zod at sync boundaries and the existing SQLite
   WASM/fast-check dependencies for tests, with locked versions.
+
+
+### ADR-017 — Dedicated module workflows within one shared workspace
+2026-10-14 · accepted direction; implementation planned
+
+- **Context:** The owner requested fresh life-manager product research, richer
+  functionality across every module, a complete personal CRM and a more
+  attractive, usable interface with meaningful animation. Browser/source
+  inspection confirms that most current modules share one list/field-editor
+  composition and expose only a small part of their domain capabilities.
+- **Decision:** Keep shared tokens, shell, accessible primitives, persistence
+  and navigation conventions; give each feature folder responsibility for its
+  dedicated composition/workflow. Use canonical entity references for contextual
+  views: multiple People notes use Note + Link, conversations use Interaction,
+  and follow-ups remain Tasks. Adopt DESIGN's module/motion gates and deliver
+  complete vertical workflows in PRODUCT-RESEARCH's staged sequence.
+- **Consequences:** The generic module editor remains prototype infrastructure,
+  not the final screen architecture. Incremental implementation preserves
+  continuity and existing records. Planned extensions require G01–G08 data
+  contracts before schema/migration/merge changes. This direction changes no
+  dependency, sync format, encryption, platform stack or server commitment.
+  The research session produces docs only; no redesigned UI is claimed shipped.
