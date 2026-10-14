@@ -238,6 +238,23 @@ nav button[aria-current='page'] {
 }
 .capture input {
   background: var(--bg-subtle);
+  min-inline-size: 0;
+  flex: 1;
+}
+.capture button {
+  flex-shrink: 0;
+}
+.backlog-toggle {
+  display: flex;
+  min-block-size: 44px;
+  align-items: center;
+  gap: 10px;
+  margin-block-end: 18px;
+  color: var(--text-muted);
+}
+.backlog-toggle input {
+  inline-size: 20px;
+  min-block-size: 20px;
 }
 .stats {
   display: grid;
@@ -351,6 +368,7 @@ nav button[aria-current='page'] {
 }
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-block-start: 22px;
 }
