@@ -1,3 +1,6 @@
+import { createSyncStore } from './sync-store';
+import type { SyncStore } from './sync-store';
+export * from './sync-store';
 import { entitySchemas, parseRecord, tickHlc, parseHlc, formatHlc, editText } from '@lm/core';
 import type { Envelope, EntityType, ClockState } from '@lm/core';
 import type { SqlDriver, SqlValue } from './driver';
@@ -16,6 +19,7 @@ const longText = new Set([
   'narrative',
 ]);
 export interface Repository {
+  sync: SyncStore;
   list(type?: EntityType, includeDeleted?: boolean): Promise<Envelope[]>;
   get(id: string): Promise<Envelope | null>;
   put(type: EntityType, id: string, data: Envelope['data'], unset?: string[]): Promise<Envelope>;
@@ -48,6 +52,15 @@ export async function createRepository(
           `CREATE VIEW "${type}" AS SELECT id, envelope, json_extract(envelope, '$.data') AS data FROM records WHERE type = '${type}' AND deleted_at IS NULL`,
         );
       await db.query('INSERT INTO migrations(version) VALUES(1)');
+    }
+    if (Number(rows[0]?.version ?? 0) < 2) {
+      await db.query(
+        'CREATE TABLE sync_problems (path TEXT NOT NULL, reason TEXT NOT NULL, ciphertext BLOB NOT NULL, resolved INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(path,ciphertext))',
+      );
+      await db.query(
+        'CREATE TABLE record_origins (id TEXT PRIMARY KEY, ever_synced INTEGER NOT NULL)',
+      );
+      await db.query('INSERT INTO migrations(version) VALUES(2)');
     }
   });
   let clock: ClockState = { millis: 0, counter: 0, deviceId: options.deviceId };
@@ -85,7 +98,10 @@ export async function createRepository(
       [record.hlc],
     );
   };
-  const stamp = () => {
+  const stamp = async (db: Pick<SqlDriver, 'query'>) => {
+    const stored = await db.query("SELECT value FROM sync_meta WHERE key='hlc'");
+    if (typeof stored[0]?.value === 'string')
+      clock = { ...parseHlc(stored[0].value), deviceId: options.deviceId };
     clock = tickHlc(clock, options.now());
     return formatHlc(clock);
   };
@@ -96,12 +112,13 @@ export async function createRepository(
       const old = decode(await db.query('SELECT envelope FROM records WHERE id=?', [id]))[0];
       if (!old) throw new Error('Record not found');
       if (parseRecord(old).kind !== 'known') throw new Error('Update required for this record');
-      const hlc = stamp();
+      const hlc = await stamp(db);
       await save(db, { ...old, hlc, deletedAt: deleted ? hlc.slice(0, 24) : null });
     });
     notify();
   };
   return {
+    sync: createSyncStore(driver, options, notify),
     list: async (type, includeDeleted = false) =>
       decode(
         await driver.query(
@@ -115,7 +132,7 @@ export async function createRepository(
         const previous = decode(await db.query('SELECT envelope FROM records WHERE id=?', [id]))[0];
         if (previous && (previous.type !== type || parseRecord(previous).kind !== 'known'))
           throw new Error('Cannot replace unknown record');
-        const hlc = stamp(),
+        const hlc = await stamp(db),
           instant = hlc.slice(0, 24);
         let record: Envelope = previous ?? {
           id,
@@ -156,6 +173,8 @@ export async function createRepository(
         const parsed = parseRecord(record);
         if (parsed.kind !== 'known') throw new Error('Unknown record');
         await save(db, parsed.record);
+        if (!previous)
+          await db.query('INSERT INTO record_origins(id,ever_synced) VALUES(?,0)', [id]);
         return parsed.record;
       });
       notify();
@@ -190,6 +209,9 @@ export async function createRepository(
           format: 'life-manager-export',
           version: 1,
           records: decode(await driver.query('SELECT envelope FROM records ORDER BY id')),
+          preservedCiphertext: await driver.query(
+            'SELECT path,reason,hex(ciphertext) AS ciphertextHex,resolved FROM sync_problems ORDER BY path, ciphertext',
+          ),
         },
         null,
         2,
