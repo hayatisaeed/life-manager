@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Envelope } from '@lm/core';
 import type { Repository } from '@lm/db';
 import { useTranslation, formatNumber } from '@lm/i18n';
@@ -11,12 +11,14 @@ export function Focus({
   onError,
   onSaved,
   prefs,
+  onActiveChange,
 }: {
   repo: Repository;
   tasks: Envelope[];
   onError: () => void;
   onSaved: () => void;
   prefs: FormatSettings;
+  onActiveChange: (active: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [taskId, setTaskId] = useState('');
@@ -26,6 +28,9 @@ export function Focus({
   const [remaining, setRemaining] = useState(25 * 60);
   const [pauses, setPauses] = useState<{ start: string; end: string }[]>([]);
   const [pauseStart, setPauseStart] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const busy = useRef(false);
   useEffect(() => {
     if (deadline === null) return;
     const update = () => setRemaining(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
@@ -34,7 +39,9 @@ export function Focus({
     return () => clearInterval(interval);
   }, [deadline]);
   async function finish() {
-    if (started === null) return;
+    if (started === null || sessionId === null || busy.current) return;
+    busy.current = true;
+    setSaving(true);
     try {
       const now = Date.now();
       const breaks =
@@ -44,7 +51,7 @@ export function Focus({
               ...pauses,
               { start: new Date(pauseStart).toISOString(), end: new Date(now).toISOString() },
             ];
-      await repo.put('focusSession', generateId(now), {
+      await repo.put('focusSession', sessionId, {
         ...(taskId ? { taskId } : {}),
         plannedMin: minutes,
         start: new Date(started).toISOString(),
@@ -57,14 +64,20 @@ export function Focus({
       setPauseStart(null);
       setPauses([]);
       setRemaining(minutes * 60);
+      setSessionId(null);
+      onActiveChange(false);
       onSaved();
     } catch {
       onError();
+    } finally {
+      busy.current = false;
+      setSaving(false);
     }
   }
   return (
     <section>
       <p>{t('focusHelp')}</p>
+      <p className="notice">{t('focusContinuity')}</p>
       {started === null && (
         <div className="fields" style={{ marginBlockStart: 24 }}>
           <label className="field">
@@ -106,9 +119,11 @@ export function Focus({
         {started === null ? (
           <button
             className="primary"
-            disabled={minutes < 1 || minutes > 240}
+            disabled={!Number.isInteger(minutes) || minutes < 1 || minutes > 240}
             onClick={() => {
               const now = Date.now();
+              setSessionId(generateId(now));
+              onActiveChange(true);
               setStarted(now);
               setDeadline(now + minutes * 60000);
             }}
@@ -118,6 +133,7 @@ export function Focus({
         ) : (
           <>
             <button
+              disabled={saving}
               onClick={() => {
                 if (deadline !== null) {
                   setRemaining(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
@@ -142,6 +158,7 @@ export function Focus({
             </button>
             <button
               className="primary"
+              disabled={saving}
               onClick={() => {
                 void finish();
               }}

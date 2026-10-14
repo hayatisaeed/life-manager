@@ -1,9 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Envelope } from '@lm/core';
 import type { Repository } from '@lm/db';
 import { useTranslation, instantInput } from '@lm/i18n';
 import type { Module } from './modules';
 import { generateId, text } from './runtime';
+export interface EditorDraft {
+  id: string;
+  values: Envelope['data'];
+  base: Envelope['data'] | null;
+  edited: string[];
+}
 
 export function Editor({
   module,
@@ -13,6 +19,10 @@ export function Editor({
   today,
   onClose,
   onError,
+  draft,
+  onDraft,
+  onSaved,
+  onDiscard,
 }: {
   module: Module;
   record: Envelope | undefined;
@@ -21,18 +31,35 @@ export function Editor({
   today: string;
   onClose: () => void;
   onError: () => void;
+  draft: EditorDraft | undefined;
+  onDraft: (draft: EditorDraft) => void;
+  onSaved: (saved: Envelope, submitted: EditorDraft) => void;
+  onDiscard: () => void;
 }) {
   const { t } = useTranslation();
-  const [values, setValues] = useState<Envelope['data']>(() => {
+  const [id] = useState(() => draft?.id ?? record?.id ?? generateId(Date.now()));
+  const [initialBase] = useState(() => draft?.base ?? record?.data ?? null);
+  const base = draft?.base ?? initialBase;
+  const formRef = useRef<HTMLFormElement>(null);
+  const busy = useRef(false);
+  const [initialValues] = useState<Envelope['data']>(() => {
+    if (draft) return { ...draft.values };
     const initial = { ...(record?.data ?? module.initial(today)) };
     const amount = initial.amount;
     if (amount && typeof amount === 'object' && !Array.isArray(amount))
       initial.amountInput = amount.amount ?? 0;
     return initial;
   });
+  const values = draft?.values ?? initialValues;
+  const edited = draft?.edited ?? [];
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    formRef.current?.querySelector<HTMLElement>('input:not([disabled]),textarea,select')?.focus();
+  }, []);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (busy.current) return;
+    busy.current = true;
     setSaving(true);
     try {
       const data = { ...values };
@@ -62,31 +89,54 @@ export function Editor({
           unset.push(field.key);
         }
       }
-      await repo.put(module.type, record?.id ?? generateId(Date.now()), data, unset);
-      onClose();
+      // A draft changes only edited fields; hidden or remotely updated fields keep their current values.
+      const fields = new Set(edited);
+      if (module.type === 'transaction' && (fields.has('amountInput') || fields.has('accountId')))
+        fields.add('amount');
+      const changed =
+        base === null
+          ? data
+          : Object.fromEntries(Object.entries(data).filter(([key]) => fields.has(key)));
+      const saved = await repo.put(
+        module.type,
+        id,
+        changed,
+        base === null ? unset : unset.filter((key) => fields.has(key)),
+      );
+      onSaved(saved, { id, values, base, edited });
     } catch {
       onError();
     } finally {
       setSaving(false);
+      busy.current = false;
     }
   }
   return (
     <form
       className="editor"
+      ref={formRef}
       aria-label={t(record ? 'edit' : 'create')}
       onSubmit={(event) => {
         void submit(event);
       }}
     >
+      <p className="notice">{t(draft ? 'draftRestored' : 'draftHelp')}</p>
       <div className="fields">
         {module.fields.map((field) => {
           const value = values[field.key];
           const display = typeof value === 'string' || typeof value === 'number' ? value : '';
-          const set = (input: string) =>
-            setValues({
+          const set = (input: string) => {
+            const next = {
               ...values,
-              [field.key]: field.kind === 'number' ? (input === '' ? '' : Number(input)) : input,
-            });
+              [field.key]:
+                field.kind === 'number' || field.key === 'priority'
+                  ? input === ''
+                    ? ''
+                    : Number(input)
+                  : input,
+            };
+            onDraft({ id, values: next, base, edited: [...new Set([...edited, field.key])] });
+          };
           return (
             <label
               className={`field ${field.kind === 'textarea' ? 'field-wide' : ''}`}
@@ -96,6 +146,7 @@ export function Editor({
               {field.kind === 'textarea' ? (
                 <textarea
                   dir="auto"
+                  aria-label={t(field.label)}
                   value={display}
                   required={field.required}
                   onChange={(event) => set(event.target.value)}
@@ -119,7 +170,7 @@ export function Editor({
                   ) : (
                     field.options?.map((option) => (
                       <option key={option} value={option}>
-                        {t(option)}
+                        {t(field.key === 'priority' ? `priority${option}` : option)}
                       </option>
                     ))
                   )}
@@ -156,8 +207,11 @@ export function Editor({
         >
           {t('save')}
         </button>
-        <button type="button" onClick={onClose}>
-          {t('cancel')}
+        <button type="button" disabled={saving} onClick={onClose}>
+          {t('keepDraft')}
+        </button>
+        <button type="button" disabled={saving} onClick={onDiscard}>
+          {t('discardDraft')}
         </button>
       </div>
     </form>

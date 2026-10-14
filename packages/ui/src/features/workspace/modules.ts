@@ -35,7 +35,7 @@ export const modules: Record<string, Module> = {
       title,
       notes,
       { key: 'dueDate', label: 'dueDate', kind: 'date' },
-      { key: 'priority', label: 'priority', kind: 'number' },
+      { key: 'priority', label: 'priority', kind: 'select', options: ['1', '2', '3', '4'] },
       status(['todo', 'doing', 'done', 'cancelled']),
     ],
     initial: () => ({
