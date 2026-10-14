@@ -27,11 +27,38 @@ Work is split into **phases → milestones (P<phase>.<n>) → tasks**.
   priorities, dependencies and acceptance gates in
   [UX-RESEARCH.md](UX-RESEARCH.md).
 
-This checkbox completes research only. It does not complete any implementation
-milestone. The first unchecked engineering milestone remains **P0.2**. The audit
-recommends continuity/recovery and the daily planning loop before adding new
-modules; follow-up tasks below belong to their existing milestones. Candidate
-features F23/F24 require separate schema/merge design before acceptance.
+Research checkboxes complete research only. They do not complete implementation
+milestones. The owner requested a fresh, broader product direction on
+2026-10-14; [PRODUCT-RESEARCH.md](PRODUCT-RESEARCH.md) now defines module depth,
+connected journeys, evidence and data-design gates. The earlier audit remains
+historical evidence. Candidate schemas still require design before code.
+
+- [x] **R2026-10-14:** Fresh primary-source research across 19 product references,
+  current browser/source diagnosis, module experience contracts, motion direction
+  and a staged expansion plan. No UI or feature implementation is included.
+
+### Current delivery order — owner-directed product expansion
+
+The first unchecked foundation milestone remains P0.2. The owner's product
+brief prioritizes the local web design/depth track below alongside foundation
+validation. Do not require unavailable forge tokens/native tooling to start
+local prototype work. Do not mark platform-wide milestones complete from web
+work alone. One scoped vertical workflow per branch/PR remains the default.
+
+| Wave | Roadmap scope | Dependency / completion boundary |
+|---|---|---|
+| W1 | P0.8 design system/prototypes; P0.9 shell/search/recovery | Existing local web foundations; resolve G01 before draft/preferences persistence. |
+| W2 | P2.1 People depth showcase; P1.1 processing; P1.2 Tasks/Projects; Today | W1 usable shell, current Note/Link/Interaction/Task APIs; recoverable compound writes. |
+| W3 | P1.3 local Planner; P3 habits/routines/focus | Connected tasks, recurrence/time and recovery contracts. |
+| W4 | P2.2/P2.3 writing; P5.3/P5.4 learning | Links/search/Markdown/review services; attachments for media only. |
+| W5 | P4 Money; P5 wellbeing; P6 Admin/Goals; P3.3/P8.5 review/insights | Independent module releases; required domain/data gates before each. |
+| W6 | P7/P8/P9/native entry points | Validated recovery, adapters and explicit integration/privacy configuration. |
+
+**Next product slice:** P0.8 compare two realistic visual prototypes of Inbox,
+Tasks, Projects, Planner and People; establish module-specific layouts and
+motion. Then build a local People profile with multiple linked notes,
+conversation history and follow-up tasks. §4 of PRODUCT-RESEARCH supplies a
+workflow gate for every module; §5 supplies connected-journey gates.
 
 - [x] **R2026-10-13 maintenance draft:** Specify safe maintenance/offline recovery
   for owner review in [SYNC-MAINTENANCE-PROPOSAL.md](SYNC-MAINTENANCE-PROPOSAL.md).
@@ -152,6 +179,49 @@ second device joins with the passphrase and both stay in sync.
 
 ---
 
+
+### P0.8 Product design system and dedicated module prototypes
+- [ ] Compare warm editorial and crisp compact directions using realistic
+  synthetic data; select a coherent shell, typography, density and surface system
+- [ ] Prototype distinct Inbox processing, task actions, project workspace,
+  planner timeline and People profile/notes/timeline layouts (DESIGN §11)
+- [ ] Define semantic surface/status/area tokens and shared motion tokens;
+  implement completion, expansion, sheet, reordering and status choreography
+  with system reduced-motion equivalents (DESIGN §12)
+- [ ] Add shared component stories and state inventory; review phone/tablet/
+  desktop, en/fa and light/dark before rolling the language into modules
+- [ ] Review actual motion, interruption, readability, contrast, keyboard/focus
+  and first-use/populated/error states; record visual/usability findings
+
+**Dependencies:** current local web shell/repository. No new network integration
+or schema required for synthetic prototypes. New dependencies require the
+existing stack approval rules.
+**AC:** Five recognizable module prototypes with working primary interactions,
+realistic fixtures and reduced-motion review; headings/colors alone do not
+provide differentiation. Design review evidence is recorded. No module is
+called implemented merely because its prototype exists.
+
+### P0.9 Shared workspace navigation, discovery and continuity
+- [ ] Grouped navigation/favorites, mobile tabs/More and tablet overlay;
+  contextual verbs and compact global capture, with storage status on phone
+- [ ] Routable module/details and Back/refresh behavior; preserve view filters,
+  selection, scroll and opener focus across contextual navigation
+- [ ] Local global search/command palette with snippets, type/context, keyboard
+  results and separate per-view filters; open linked entities in context
+- [ ] Specify G01, then durable draft and interrupted-focus recovery with limits,
+  versioning and explicit resume/discard; saved records and drafts stay distinct
+- [ ] Module visibility and comfortable/compact density after preference design;
+  hidden data remains searchable and exportable
+- [ ] Contextual empty/loading/error/success states, localized shortcut discovery
+  and representative formative usability sessions (PRODUCT-RESEARCH §6)
+
+**Dependencies:** P0.8 selected design language; repository FTS/link queries;
+G01 before new preference/draft persistence. Deliver local web slices separately
+from P0.7 native/onboarding acceptance.
+**AC:** Capture → search → detail → Back works on keyboard and phone; no lost
+input on navigation/reload or fabricated save success. All hidden modules are
+reachable through More/search. Existing continuity tests remain green.
+
 ## Phase 1 — Core planning
 ### P1.1 Inbox & quick capture
 - [ ] Inbox list, capture field, ⌘K quick add, desktop global hotkey, Android
@@ -164,6 +234,14 @@ second device joins with the passphrase and both stay in sync.
   - [x] Shared web UI capture on every screen; Cmd/Ctrl-K focus, success
     announcement and pending-input/duplicate-submit protection
   - [ ] Native shell entry points and platform verification
+- [ ] Dedicated processing queue with selected-item/destination preview,
+  keyboard next-item flow, source context and recoverable archive/defer semantics
+- [ ] Multi-line capture split preview, bulk processing and deterministic en/fa
+  date parsing; specify G02 before new processing states/provenance
+
+**Inbox AC (M02):** Capture from People, process into a project task and retry a
+failed conversion; one destination exists and the source remains recoverable.
+
 ### P1.2 Areas, projects, tasks
 - [ ] Area management; project list and Kanban
 - [ ] Task list views: Today, Upcoming, By project, By area, Filters
@@ -173,6 +251,19 @@ second device joins with the passphrase and both stay in sync.
   priorities; active/completed separation (U07/U09)
 - [ ] Today separates overdue/due/scheduled commitments from optional undated
   backlog and lets users choose a small priority list (U05, F05)
+- [ ] Dedicated task rows/details with inline add, expandable metadata,
+  Anytime/Upcoming views, estimates, completion history and reversible bulk actions
+- [ ] Project portfolio and workspace: brief, next actions, task list/board,
+  linked notes/resources, area context and transparent derived completion
+- [ ] Area detail with ongoing responsibilities and active projects; review
+  prompts for projects without next actions; active/on-hold/archive workflows
+- [ ] Visual saved filters/templates; specify G03 project sections/milestones/
+  target dates and G04 waiting/dependency/cycle semantics before those extensions
+
+**Tasks/Projects AC (M03/M04):** Create project + note + parent/subtask, schedule
+work and complete from Today; views agree and project progress excludes cancelled
+work. Empty projects show no tasks rather than fake completion.
+
 ### P1.3 Calendar & planner
 - [ ] Local events with recurrence; day and week timeline; month view
 - [ ] Planner combining events, scheduled and due tasks, habits, bills
@@ -182,6 +273,17 @@ second device joins with the passphrase and both stay in sync.
 - [ ] Accessible agenda alternative, overlap feedback and derived daily
   capacity from estimates/blocks; scheduling never silently changes deadlines
   (U06, F07)
+- [ ] Unscheduled-task tray, all-day lane, source visibility, working-hours/
+  buffer controls and planned workload versus capacity with unknown estimates
+- [ ] Recurring-event occurrence/series edit policy and undo; explicit timezone,
+  DST and calendar-boundary validation; honest stale external-cache status
+- [ ] Today agenda/priorities/due actions and guided plan/shutdown flow; priority
+  selection persistence must be specified before adding a new saved field
+
+**Local planner AC (M01/M05):** Plan three tasks, schedule/resize one by keyboard,
+see overlap feedback and undo without changing its deadline. Due habits and
+source-linked follow-ups surface as their implementations land.
+
 ### P1.4 Notifications
 - [ ] Reminder scheduler per platform, quiet hours, per-device categories,
   daily digest, snooze
@@ -190,11 +292,31 @@ second device joins with the passphrase and both stay in sync.
 fire on desktop and Android.
 
 ## Phase 2 — People & knowledge
-### P2.1 People CRM
-- [ ] Person list (search, circles, tags) and detail page with timeline
-- [ ] Interactions (quick log, multiple people, follow-up → task),
-  relationships, important dates (calendar-aware), gift ideas
-- [ ] Cadence nudges ("haven't talked in a while"); birthday reminders
+### P2.1 People CRM — complete relationship workflow
+- [ ] Dedicated searchable directory with circle/tag/reconnect filters and
+  person profiles (Overview, Timeline, Notes, Follow-ups)
+- [ ] Rich optional contact methods, avatar, aliases, company/role/how-we-met,
+  personal context and custom fields; progressive disclosure at creation
+- [ ] Multiple independently editable long-form notes per person via Note +
+  Link; Person.notes remains overview context; full reading and content search
+- [ ] Dated interaction log, multiple people, summary/conversation notes,
+  history correction and source-linked follow-up tasks
+- [ ] Important dates in either calendar, birthdays/anniversaries, relationships
+  between people and gift ideas/given history
+- [ ] Per-person cadence and gentle reconnect queue; specify G05 snooze/reset/
+  partial-date semantics; writing a note alone does not reset last contact
+- [ ] vCard import and duplicate resolution preview; specify reference rewrite,
+  undo/merge preservation before applying duplicate merges (P9.2, G05)
+
+**Dependencies:** usable W1 shell, current Note/Link/Interaction/Task APIs;
+recoverable compound writes. G05 gates advanced extensions, not basic notes.
+**AC (M06):** From a profile add two separate notes, log a two-person call and
+create a follow-up. Find notes by content and history from either profile;
+complete the task in Today and see its state in People. Important-date/cadence
+behavior is deterministic and calendar-aware. Profile workflows pass both
+themes, directions, keyboard and phone review. No automatic contact scraping
+or enterprise sales pipeline is included.
+
 ### P2.2 Notes
 - [ ] CodeMirror Markdown editor, `[[wikilinks]]` with autocomplete,
   `@person` mentions, `#tags`
@@ -203,8 +325,24 @@ fire on desktop and Android.
   keyboard navigation and explicit scope; use repository FTS (U08, F04)
 - [ ] Full reading details for long notes, safe Markdown and contextual links
   to projects/people (U14, F12)
+- [ ] Dedicated library/editor/reader with comfortable prose measure,
+  folders/tags/pins, contextual backlinks and navigable related entities
+- [ ] Confirm ambiguous person/unlinked mentions; stable identity across rename;
+  bundled templates, revision/conflict reading and attachment IO states
+
+**Notes AC (M07):** One note links a person and project; navigate from either
+and return without losing selection, scroll or draft. Markdown stays safe.
+
 ### P2.3 Journal
 - [ ] Daily entry, prompts (daily/weekly/random), mood, calendar view
+
+- [ ] Calendar/chronological browsing, spacious writing, optional mood,
+  tag/date search and past-entry resurfacing (On This Day)
+- [ ] Templates/reflection collections and media after G07/attachment design;
+  specify multiple-entry-per-day behavior before promising it in the UI
+
+**Journal AC (M08):** Write, revisit, correct and retrieve an entry by month/tag;
+input survives navigation and missing days use neutral language.
 
 ## Phase 3 — Habits, routines & focus
 - [ ] **P3.1** Habits: flexible schedules, streaks with skip tokens, heatmap,
@@ -223,6 +361,19 @@ fire on desktop and Android.
   - [ ] Durable process/reload recovery and native lifecycle verification
 - [ ] **P3.1 follow-up:** Habit log correction and schedule-aware Today actions (U13, F11)
 
+- [ ] **P3.1 depth:** Boolean/count/duration inputs, target/unit context,
+  schedule-aware period summaries, heatmap and editable history with notes
+- [ ] **P3.2 depth:** Sequential routine runner, pause/resume, optional duration,
+  linked habit actions and retry-safe log identity
+- [ ] **P3.3 depth:** Guided review with linked completed/slipped work, area/time
+  summary, reflection and preview/apply for next-week adjustments
+- [ ] **P3.4 depth:** Task-linked Pomodoro/free timer, break/interruptions,
+  persistent compact controls, manual time correction and area/project/task reports
+
+**AC (M09/M10/M15):** Correct a three-times-per-week habit; resume a routine
+without duplicate logs; recover a focus session after reload and finish once;
+review planned versus actual time and deliberately accept next-week changes.
+
 ## Phase 4 — Money
 - [ ] **P4.1** Accounts, categories, transactions (multi-currency, transfers),
   quick entry
@@ -235,6 +386,20 @@ fire on desktop and Android.
 - [ ] **P4.1 follow-up:** Human-readable MoneyInput with exact integer conversion, currency/sign
   guidance, field errors and account balance feedback (U09/U15, F14)
 
+- [ ] **P4.1 depth:** Account summaries and aligned register with categorization,
+  search/filter/bulk actions, transfer pairing and payment history
+- [ ] **P4.2/P4.3 depth:** Dedicated budget/bills/subscriptions views, upcoming
+  obligations, visible remaining budget and retry-safe “mark paid” flow
+- [ ] **P4.4 depth:** Savings progress and spending/cash-flow reports with
+  visible currency conversion basis/date and drill-down to transactions
+- [ ] **P4.5 planned contract:** G06 for reconciliation/cleared state, split
+  transactions, audit corrections and previewable categorization rules; implement
+  only after schemas, migrations, preservation and convergence tests are specified
+
+**AC (M11):** Transfer between accounts, categorize an expense, mark a recurring
+bill paid and retry; exact balances, budget totals and reminder state agree.
+Transfers do not count as spending; mixed currencies require explicit FX.
+
 ## Phase 5 — Health & learning
 - [ ] **P5.1** Health logs: sleep, water, exercise, mood, energy, weight,
   custom metrics. One-tap logging.
@@ -244,6 +409,18 @@ fire on desktop and Android.
 - [ ] **P5.4** Flashcards with FSRS: decks, review session, stats; cards
   created from notes
 
+- [ ] **P5.1 depth:** Metric-specific water/sleep/exercise/mood/energy/weight
+  entry, units, custom definitions, date-range charts and history correction
+- [ ] **P5.2 depth:** Missing-data/coverage display, sample counts and
+  explainable correlations with source drill-down; no causal/diagnostic claims
+- [ ] **P5.3 depth:** Resource shelf/list/detail, author/URL, progress, rating,
+  linked notes and reading history; G07 for excerpts/highlight source locations
+- [ ] **P5.4 depth:** Dedicated Again/Hard/Good/Easy review runner, source links,
+  due workload, suspension and recall/review statistics
+
+**AC (M12/M13):** Correct sleep across midnight and inspect missing observations;
+update book progress, make a source-linked card and review it reproducibly.
+
 ## Phase 6 — Life admin & goals
 - [ ] **P6.1** Document vault: encrypted files, camera capture on mobile,
   expiry reminders
@@ -252,11 +429,29 @@ fire on desktop and Android.
 - [ ] **P6.4** Goals and milestones with automatic progress; goal page with
   linked tasks
 
+- [ ] **P6.1 depth:** Document gallery/list/detail with encrypted attachments,
+  search, expiry state, renewals and linked person/asset context
+- [ ] **P6.2 depth:** Fast quantity/unit entry, reorder, reuse and completed-item
+  handling with keyboard/touch alternatives
+- [ ] **P6.3 depth:** Asset dossier, purchase/warranty/documents, maintenance due
+  queue and linked task history; G08 before locations/serial/custom asset fields
+- [ ] **P6.4 depth:** Goal portfolio/detail with why, milestone path, linked
+  projects/tasks and explicit manual/derived progress basis
+
+**AC (M14/M15):** Find an asset warranty, complete due maintenance and trace its
+history; reuse a shopping list; complete goal-linked work and explain progress.
+File IO failure retains the draft. G08 gates new contribution formulas.
+
 ## Phase 7 — External calendars
 - [ ] **P7.1** ICS subscription and import
 - [ ] **P7.2** Google Calendar read
 - [ ] **P7.3** CalDAV/iCloud read
 - [ ] **P7.4** Write time blocks back to a chosen external calendar
+
+- [ ] Source/calendar visibility and per-connector unavailable/stale/error
+  states; external events do not block local planning or imply successful sync
+- [ ] Occurrence edits and write-back preview with target calendar and explicit
+  acceptance; connector credentials stay in platform.secrets
 
 ## Phase 8 — Smart layer
 - [ ] **P8.1** `packages/ai`: provider interface, Claude and Ollama, settings,
@@ -269,6 +464,15 @@ fire on desktop and Android.
   configurable endpoint, deferred to desktop)
 - [ ] **P8.5** Weekly insights dashboard and life-areas wheel (deterministic),
   plus an optional AI narrative
+
+- [ ] **P8.1–P8.4 UX:** Provider/capability/privacy controls, inspectable send
+  preview, editable proposal and accept/discard/retry with source context;
+  no automatic saving or background contact ingestion
+- [ ] **P8.5 depth:** Drillable weekly task/focus/habit/money/wellbeing views,
+  neutral language, coverage/sample count and deterministic summary before AI
+
+**AC (M15/M16):** Reports open underlying records; unconfigured providers expose
+honest capability states; proposals write only explicitly accepted changes.
 
 ## Phase 9 — Imports & exports
 - [ ] **P9.1** Full export to plain JSON and Markdown, as a zip (never locked
@@ -292,6 +496,27 @@ fire on desktop and Android.
   unsigned-app first launch, backups
 - [ ] **P10.4** Repo compaction, passphrase change and key-rotation flows
 - [ ] **P10.5** Optional SQLCipher for local DB encryption
+
+## Product expansion acceptance and data gates
+
+All new product tasks above are unchecked. Apply PRODUCT-RESEARCH §4's module
+workflow and §5's connected journey; DESIGN §§11–12 add module differentiation,
+visual and motion requirements. Existing unit/e2e/convergence requirements still
+apply. Record visual review and actual usability evidence; no participant
+research has been completed yet.
+
+- [ ] **G01–G08:** Resolve each relevant contract from PRODUCT-RESEARCH §7 in
+  a scoped specification/code change before introducing new persisted behavior
+- [ ] Cross-module journeys: conversation→follow-up, idea→project→focus,
+  resource→note→card, warranty→maintenance and bill→payment→budget
+- [ ] Synthetic populated-state fixtures and formative usability sessions;
+  measure completion, ease, recovery and capture/search responsiveness locally
+- [ ] Export/restore of linked records, unknown-field retention and safe retries
+  for every newly accepted schema; preserve complete text/edit history
+
+Research expands the target product but does not authorize speculative schemas,
+new hosting, a stack replacement or weakening privacy. Advanced candidates F23/
+F24 now have concrete contracts G04/G06 to resolve; their runtime remains pending.
 
 ## Later / backlog
 - iOS build (Capacitor). Generic git transport (Gitea/SSH). Settings sync of

@@ -1,5 +1,11 @@
 # UI/UX audit and feature opportunities
 
+> **2026-10-14 product direction:** This audit is retained as historical evidence.
+> The owner's fresh research/expansion brief is now in
+> [PRODUCT-RESEARCH.md](PRODUCT-RESEARCH.md); use its module contracts and the
+> updated DESIGN/ROADMAP for current feature depth, differentiation and motion.
+> Previously observed defects and completed fixes remain recorded below.
+
 Research date: **2026-10-13**. Scope: the current local web workspace, not a
 released native client. This is an expert inspection and desk research, not
 interviews, a usability study, a security audit, or proof of market demand.

@@ -9,7 +9,8 @@ The detailed specs are:
 | [SYNC.md](SYNC.md) | Sync protocol, repo layout, merge algorithm, GitHub/GitLab transports |
 | [SECURITY.md](SECURITY.md) | Threat model, cryptography, key management, secrets handling |
 | [DATA-MODEL.md](DATA-MODEL.md) | Every entity and its fields, plus recurrence and invariants |
-| [DESIGN.md](DESIGN.md) | Visual design system, theming, layout, RTL, accessibility |
+| [DESIGN.md](DESIGN.md) | Dedicated module experiences, visual system, motion, RTL and accessibility |
+| [PRODUCT-RESEARCH.md](PRODUCT-RESEARCH.md) | External product evidence, module depth, connected journeys and data-design gates |
 | [TECH-STACK.md](TECH-STACK.md) | Chosen libraries and versions policy |
 | [RELEASE.md](RELEASE.md) | Building, signing and distributing installers |
 | [DECISIONS.md](DECISIONS.md) | Decision log (ADRs). Read it before changing anything below. |
@@ -30,7 +31,7 @@ The detailed specs are:
 | Locale | English and Persian (RTL) UI, Gregorian and **Jalali** calendars, multiple currencies. |
 | Voice notes | Record now (encrypted audio), transcribe later. |
 | Distribution | **Installers outside the app stores**: `.dmg`, `.msi`/`.exe` and `.apk` on GitHub Releases, with in-app updates. |
-| Design | Minimal and modern, with **light, dark and system** themes. |
+| Design | Polished dedicated module experiences with a shared visual/motion system, **light, dark and system** themes, and progressive disclosure (ADR-017). |
 | Imports | Todoist, Notion, Obsidian, vCard, bank CSV and Anki. |
 
 ## 2. High-level shape
@@ -92,6 +93,28 @@ life-manager/
 Dependencies only point downward:
 `apps → ui → (core, db, sync, ai, calendar, importers, i18n) → (crypto, platform interfaces)`.
 `core` depends on nothing except `zod` and small pure utilities.
+
+### Planned UI composition — ADR-017
+
+The current web prototype centralizes module metadata, rows and editing under
+`features/workspace`. The target UI keeps a shared shell, tokens, primitives,
+status/recovery conventions and repository hooks, while each
+`packages/ui/src/features/<module>/` owns its workflow and screen composition.
+Inbox is a processing queue, Tasks an action list, Projects an outcome workspace,
+Planner a time surface, People a profile/timeline and Money a register. Do not
+extend the generic field-driven screen as the final product experience.
+
+Features open related records through shared navigation/query interfaces,
+without duplicating their data or importing another feature's internal UI.
+Domain services and repository transactions own compound-write correctness;
+visual completion cannot stand in for persistence acknowledgment. Backlinks,
+profiles, progress and timelines are derived local views of canonical records.
+
+This is a planned architectural direction, not a completed folder migration.
+Implement one vertical module at a time; preserve current persistence and
+continuity behavior. PRODUCT-RESEARCH §7 gates new persisted structures, and
+DESIGN §§11–12 define presentation/motion acceptance. No package dependency
+edge, server, sync encoding or tech-stack choice changes in this research.
 
 ## 4. Local storage
 

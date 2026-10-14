@@ -5,73 +5,89 @@ short and current. Add new log entries at the top.
 
 ## Current state
 
-- **Phase:** 0 foundations plus an early local web feature slice. P0.1 remains
-  complete; later milestones are partially implemented, not release-ready.
-- **Implemented:** core IDs/clocks/order, 45 domain schemas (Settings preserved
-  pending its complete schema), recurrence in both calendars, scalar/set/ordered
-  merges and causal long-text provenance; libsodium vault/record/blob wrappers;
-  SQLite worker OPFS persistence, migrations, FTS5, HLC/change log, CRUD,
-  tombstones/undo, live-query subscription and JSON export.
-- **Usable web screens:** Today, Inbox capture/conversion, Tasks, Projects, local
-  Events, daily boolean Habits, Focus sessions, Accounts/Transactions, Health and
-  Journal logs, Notes, People, Resources, Assets, manual Goals and Settings.
-  These are minimal slices, not completed feature phases.
-- **Research:** [UX-RESEARCH.md](UX-RESEARCH.md) records 18 UI/UX findings and
-  24 feature opportunities from source/browser inspection and primary sources.
-  Priorities are continuity/recovery, the daily planning loop, then module depth;
-  research is complete, implementation is still pending.
-- **Approved direction:** ADR-016 accepts snapshot migration to a fresh private
-  repo, authenticated vault v2/write gates and indefinite tombstone/text
-  retention. The accepted protocol remains at
-  [SYNC-MAINTENANCE-PROPOSAL.md](SYNC-MAINTENANCE-PROPOSAL.md); acceptance does not
-  mean runtime maintenance is available.
-- **New foundations:** authenticated v2 crypto/control/rewrap and sync-vault
-  helpers; SQLite migration 2, transactional pulls and conditional dirty-version
-  acknowledgments; preserved ciphertext/export; record sync lock/Merkle/batching/
-  retries/rate limits; GitHub and experimental GitLab transports; HTTPS allowlist,
-  encrypted web-secret codec/IndexedDB adapter and Web Locks adapter.
-- **Next work:** P0.2 dedicated forge/CORS/native spikes; durable identity/key/
-  generation pinning, fresh-repo initialization and full onboarding; attachment
-  sync, migration orchestration and offline recovery UI. Continue complete P0.3
-  schema/coverage acceptance, native DB/platform adapters and remaining domain
-  UIs. These new APIs are not yet connected to the local web workspace.
-- **Publication:** sync foundations are committed locally on
-  `codex/sync-recovery-protocol` (`c38ea79`); continuity work is on
-  `codex/workspace-continuity`. Terminal push lacks credentials. Connector read
-  checks confirmed both remote targets absent and research base `2ac1fbc` has
-  the same tree as local `27f66b8`. Automatic approval review rejected branch
-  creation twice (unconfirmed base/overwrite risk, then a documentation base
-  rather than the local tested tip). No remote write or PR was created.
-  Publication now requires exact authorization for the two tested branch snapshots
-  and their verified base; do not bypass the automatic review rejection.
-- **Blockers / external validation:** no dedicated forge test repositories/tokens
-  supplied for authenticated CAS/CORS contract tests. `cargo` and `adb` are not
-  available on this host. Windows/Android packaging and mobile KDF timing cannot
-  be verified here. No owner's live data repo has been used for tests.
-- **Local UX improvements:** draft input and active/paused Focus state survive
-  module navigation; stable IDs and save/finish guards prevent duplicate retries;
-  editor saves patch only edited fields and acknowledge the submitted draft
-  revision. Persistent capture, keyboard focus and save feedback work everywhere.
-  Today excludes undated backlog unless selected, and priorities have named choices.
-- **Remaining UX risks:** drafts/focus state are memory-only; before-unload and
-  localized notices communicate the reload limit. Mobile still hides storage
-  status and uses a navigation strip. Restore UI, calendar-aware entry, routing,
-  field errors and the remaining planning/detail depth are unfinished.
-- **Known gaps:** product-connected sync/onboarding, AI, external calendars, PWA offline shell caching,
-  notifications, native shells, importers, advanced planner/time blocking,
-  budgets, streaks, routines, flashcards, document vault and insights remain
-  unfinished. Date entry is Gregorian; date display can be Jalali. Notes use a
-  plain textarea. Mobile navigation is a scrollable strip. Text-version graph
-  pruning is explicitly unavailable pending a separate accepted protocol. Required 100% branch coverage and all primitive
-  known-answer vectors are not yet established.
-- **Verified locally:** `pnpm check` (124 unit tests; two opt-in forge contracts
-  not run), production web build, `pnpm test:e2e` (28 tests in light/dark and en/fa), persisted data after reload,
-  the Ladle story build, and page overflow checks at 1440/768/390/320px. Browser visual review covered
-  English light desktop, Persian dark phone, and tablet layouts. Native
-  platforms, the full 1,000-seed/all-domain simulator, authenticated network integrations, accessibility axe
-  checks and installer distribution are unverified.
+- **Phase:** Foundations and an early local web prototype. P0.1 is complete;
+  later platform/feature milestones are partial. No feature phase is complete.
+- **Product direction:** The owner requested fresh research and substantially
+  richer, more attractive module experiences. PRODUCT-RESEARCH.md compares 19
+  product references and defines M01–M16 workflows, connected journeys, W1–W6
+  delivery and G01–G08 data gates. DESIGN now requires distinct module layouts
+  and a meaningful accessible motion system; ADR-017 records planned composition.
+- **Next product work:** P0.8 realistic Inbox/Tasks/Projects/Planner/People
+  prototypes and design/motion primitives, then P0.9 shell/search/recovery and
+  a P2.1 People profile with multiple linked notes, interactions and follow-ups.
+  This local product track can proceed alongside P0.2 foundation spikes.
+- **Implemented foundations:** Pure IDs/clocks/order, 45 domain schemas
+  (Settings preserved pending schema), recurrence/merges/text provenance;
+  libsodium vault/record/blob wrappers; worker SQLite OPFS persistence,
+  migrations/FTS/HLC/change log, CRUD/tombstones/undo/live queries/JSON export.
+  V2 controls, record sync/Merkle/retries, transactional pulls/conditional acks,
+  preserved ciphertext and forge/platform helper APIs exist but are not connected
+  to product onboarding. GitLab writes remain gated pending real verification.
+- **Usable local web slice:** Today, Inbox, Tasks, Projects, local Events,
+  daily boolean Habits, Focus, Accounts/Transactions, Health/Journal, Notes,
+  People, Resources, Assets, manual Goals and Settings. Most share a basic list/
+  form; dedicated workspaces, module depth and new motion remain unimplemented.
+- **Continuity:** Session drafts/edited-field acknowledgments, stable submit IDs,
+  focus restoration, persistent capture and running/paused Focus survive module
+  navigation. Draft/session recovery after reload is still pending. Today omits
+  undated backlog by default. These are web-only verified slices.
+- **Foundation work remaining:** Dedicated forge/CORS/native spikes; durable
+  vault pins, fresh-repo initialization, attachments, onboarding and recovery;
+  complete schema/coverage acceptance and native adapters/packaging. Accepted
+  snapshot-migration/write-gate/retention protocol is ADR-016; runtime maintenance
+  is unavailable. No schema or sync protocol changes arise from product research.
+- **Blockers / external verification:** No dedicated forge test repos/tokens;
+  cargo/adb unavailable on this host. Native packaging, mobile KDF timing,
+  authenticated browser CAS/CORS, full 1,000-seed simulator, complete crypto
+  vectors/branch coverage and assistive-technology acceptance remain unverified.
+- **Prior verified baseline:** pnpm check (124 unit tests, two opt-in forge
+  contracts not run), production web build, 28 Playwright cases across en/fa and
+  light/dark, persistence reload, Ladle and viewport overflow review. These are
+  previous implementation-session results, not validation of the planned redesign.
+- **Research verification:** Fresh official-source reading and current dark
+  Inbox/Projects/People browser inspection plus UI source review. No competitor
+  account trials, participant studies, redesigned prototype or animation review
+  has been completed. Research recommendations need the documented validation.
+- **Publication:** GitHub browser inspection on 2026-10-14 confirms the sync
+  and continuity baseline is published via PRs #19 and #20; the current default
+  branch is `ccr-4cf615ac-tkuw7b` at `6b5be8d`. The owner explicitly authorized
+  signed-in browser publication, PR creation and merge for this research. The
+  research branch is `codex/product-research-expansion`; its publication outcome
+  is tracked in the GitHub PR. Terminal HTTPS credentials remain unavailable.
 
 ## Session log
+
+### 2026-10-14 — Fresh product research and full module expansion plan
+
+- Started from fresh external evidence and the owner's critique rather than
+  treating the previous docs as a feature ceiling. Reviewed official materials
+  for 19 product references across planning, CRM, knowledge, finance, habits,
+  wellbeing, learning and home inventory; linked evidence and labelled limits.
+- Inspected current dark Inbox/Projects/People and UI source. Shared list/form
+  composition explains the sameness; People already has one notes field but
+  lacks a usable multi-note/interaction/follow-up profile workflow.
+- Added PRODUCT-RESEARCH with 16 module contracts, cross-module journeys,
+  priorities/dependencies, usability targets and eight explicit data-design gates.
+  Expanded ROADMAP with P0.8/P0.9 and depth/acceptance work across all modules.
+- Updated DESIGN with differentiated layouts, visual hierarchy, contextual
+  actions and motion choreography/reduced-motion behavior. Corrected the
+  assumption that local writes never need pending/error feedback. Added ADR-017,
+  architecture/data-model mapping and discovery links; schemas and runtime remain
+  unchanged. The prior UX audit is retained as historical evidence.
+- Remaining: design prototypes, implementation, formative participant sessions
+  and native/network acceptance. No redesign or feature expansion is shipped by
+  this documentation change. Historical Clay material is labelled; Amie's task
+  manual is distinguished from its current meeting-note positioning.
+- Validation: pnpm check passed; typecheck/unit tasks used existing Turbo cache
+  (124 baseline tests; two opt-in forge contracts skipped). git diff --check
+  passed. Markdown is excluded by the repository formatter; scoped link/roadmap
+  consistency checks supplement it. No UI code changed, so e2e was not rerun.
+- Publication: committed locally on `codex/product-research-expansion`.
+  Read-only `git push --dry-run` preflight failed because GitHub HTTPS credentials
+  are unavailable (`could not read Username`). No remote ref was written. No
+  connector fallback bypassed the earlier automatic approval rejection for
+  inherited unpublished sync/continuity work.
+
 
 ### 2026-10-13 — Local workspace continuity fixes
 - Continued the original completion request after the approved sync checkpoint,
